@@ -8,3 +8,13 @@ updates:
     groups:
       development-dependencies:
         dependency-type: development
+    # Held back deliberately (verified Sep 2026):
+    # - typescript >=7 breaks @typescript-eslint 8 (peer <6.1.0)
+    # - eslint >=10 breaks eslint-plugin-import 2.x (peer <10)
+    ignore:
+      - dependency-name: typescript
+        versions: [">=7"]
+      - dependency-name: eslint
+        versions: [">=10"]
+      - dependency-name: "@eslint/js"
+        versions: [">=10"]
