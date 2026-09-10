@@ -1,0 +1,77 @@
+{
+  "name": "bolt-discord-bot",
+  "version": "1.0.0",
+  "description": "A fast, dependable Discord moderation bot built with Sapphire and MongoDB.",
+  "private": true,
+  "license": "Elastic-2.0",
+  "homepage": "https://github.com/gogeta1232/Bolt-OS#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gogeta1232/Bolt-OS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gogeta1232/Bolt-OS/issues"
+  },
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "dev": "tsx watch src/index.ts",
+    "dev:cluster": "tsx src/sharding/clusterManager.ts",
+    "start": "node dist/index.js",
+    "start:cluster": "node dist/sharding/clusterManager.js",
+    "db:indexes": "tsx src/scripts/sync-indexes.ts",
+    "lint": "eslint src tests *.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "audit": "npm audit --audit-level=high",
+    "validate": "npm run format:check && npm run check && npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@sapphire/decorators": "6.2.0",
+    "@sapphire/framework": "5.5.1",
+    "@sapphire/pieces": "4.4.1",
+    "discord-hybrid-sharding": "^3.0.1",
+    "discord.js": "14.27.0",
+    "dotenv": "^17.4.2",
+    "express": "5.2.1",
+    "fuse.js": "7.5.0",
+    "helmet": "8.3.0",
+    "mongoose": "^9.9.4",
+    "pino": "10.3.1",
+    "pretty-ms": "^9.3.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/express": "5.0.6",
+    "@types/node": "22.20.1",
+    "@typescript-eslint/eslint-plugin": "8.68.0",
+    "@typescript-eslint/parser": "8.68.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-import": "^2.30.0",
+    "globals": "17.11.0",
+    "pino-pretty": "13.1.3",
+    "prettier": "3.9.6",
+    "tsx": "4.23.13",
+    "typescript": "^6.0.3",
+    "vitest": "4.1.11"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "keywords": [
+    "discord",
+    "moderation",
+    "sapphire",
+    "typescript"
+  ]
+}
