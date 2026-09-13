@@ -1,32 +1,21 @@
-<div align="center" style="max-width:920px;margin:0 auto;">
-
-<!-- Spec plate header: banner + stamped pfp, not a centered stack -->
-<div style="border:1.5px solid #22211e;border-radius:16px;overflow:hidden;background:#0c0c0d;line-height:0;">
-
-<img src="assets/bolt_banner.png" alt="Bolt — stamped brass plate" width="920" style="display:block;width:100%;max-width:920px;height:auto;" />
-
-<div style="display:flex;align-items:center;gap:16px;padding:16px 18px;background:#0c0c0d;text-align:left;line-height:1;">
-
-<img src="assets/bolt_pfp.webp" alt="Bolt" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:12px;border:1px solid #2a2a2a;flex:0 0 auto;" />
-
-<div style="min-width:0;flex:1 1 auto;text-align:left;">
-<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.03em;color:#faf8f3;line-height:1;">Bolt</div>
-<div style="font-family:ui-sans-serif,system-ui,sans-serif;font-weight:500;font-size:12.5px;color:#a8a9ad;line-height:1.4;margin-top:3px;">TypeScript · <a href="https://github.com/sapphiredev/framework" style="color:#a8a9ad;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#3a3a3a;">Sapphire Framework</a> · MongoDB — moderation that rechecks at execution</div>
-</div>
-
-<div style="flex:0 0 auto;display:flex;gap:8px;align-items:center;">
-<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:0.04em;color:#0c0c0d;background:#f7b626;padding:7px 10px;border-radius:999px;">ELv2</span>
-<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#e8e8e6;border:1px solid #2a2a2a;padding:6px 10px;border-radius:999px;">slash + prefix</span>
-</div>
-
-</div>
-</div>
-
-<p style="margin:14px 0 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6b6b6b;">
-44 commands · 4 modules · per-guild config · cases with evidence
+<p align="center">
+  <img src="assets/bolt_banner.png" width="920" alt="Bolt — stamped brass plate">
 </p>
 
-</div>
+<p align="center">
+  <img src="assets/bolt_pfp.webp" width="64" height="64" alt="Bolt"><br>
+  <strong>Bolt</strong><br>
+  TypeScript · <a href="https://github.com/sapphiredev/framework">Sapphire Framework</a> · MongoDB — moderation that rechecks at execution<br>
+  <a href="#license"><img alt="ELv2" src="https://img.shields.io/badge/ELv2-f7b626?style=flat-square&labelColor=0c0c0d&color=f7b626"></a>
+  <a href="#configure"><img alt="slash + prefix" src="https://img.shields.io/badge/slash%20%2B%20prefix-2a2a2a?style=flat-square&labelColor=0c0c0d&color=2a2a2a"></a><br>
+  <sub>44 commands · 4 modules · per-guild config · cases with evidence</sub>
+</p>
+
+<p align="center">
+  <a href="#invite"><img alt="Invite" src="https://img.shields.io/badge/Invite-%23ff482c?style=for-the-badge&labelColor=%230c0c0d&color=%23ff482c"></a>&nbsp;
+  <a href="#self-host"><img alt="Self-host" src="https://img.shields.io/badge/Self--host-%23faf8f3?style=for-the-badge&labelColor=%230c0c0d&color=%23e8e8e6"></a>&nbsp;
+  <a href="https://boltdoc.vercel.app"><img alt="Docs" src="https://img.shields.io/badge/Docs-boltdoc.vercel.app-ff482c?style=for-the-badge"></a>
+</p>
 
 ---
 
@@ -34,53 +23,11 @@
 
 Bolt does not force you into one permission model. Both are checked live on every command.
 
-<table>
-<tr>
-<td width="50%" valign="top" style="background:#161617;border:1px solid #2a2a2e;border-radius:12px;padding:16px;color:#d6d6d8;">
+| ⚫ Native — use Discord                                                                                                                                                                                                                                                                   | 🔴 Fake — Bolt only · more secure                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Role has real Discord perms. Other bots see it too.<br><br>`BanMembers` for ban, `KickMembers` for kick, `ModerateMembers` for timeout, `ManageMessages` for purge, etc.<br><br><sub>Use when the role should be powerful everywhere.</sub><br><em>Owner → Administrator → real flag</em> | Role has **zero** Discord perms. Only Bolt enforces it. No stray Discord grants.<br><br>`/givepermission add @Role ban kick timeout`<br>`!gp @Role chatmod` · `!gp @Role all`<br>`src/lib/fake-permissions.ts`<br><br><sub>Use when the owner wants least privilege.</sub><br><em>Fake grant → checked as if the flag was held</em> |
 
-<div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;">
-<span style="width:8px;height:8px;border-radius:999px;background:#6b7280;display:inline-block;"></span>
-<span style="font-family:ui-sans-serif,system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:-0.01em;color:#faf8f3;">Native — use Discord</span>
-</div>
-
-Role has real Discord perms. Other bots see it too.
-
-`BanMembers` for ban, `KickMembers` for kick, `ModerateMembers` for timeout, `ManageMessages` for purge, etc.
-
-<span style="color:#a8a9ad;">Use when the role should be powerful everywhere.</span>
-
-_Owner → Administrator → real flag_
-
-</td>
-<td width="50%" valign="top" style="background:#0c0c0d;border:1px solid #ff482c;border-radius:12px;padding:16px;color:#e8e8e6;">
-
-<div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;">
-<span style="width:8px;height:8px;border-radius:999px;background:#ff482c;display:inline-block;box-shadow:0 0 8px rgba(255,72,44,0.6);"></span>
-<span style="font-family:ui-sans-serif,system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:-0.01em;color:#faf8f3;">Fake — Bolt only · more secure</span>
-</div>
-
-Role has **zero** Discord perms. Only Bolt enforces it. No stray Discord grants.
-
-`/givepermission add @Role ban kick timeout`  
-`!gp @Role chatmod` · `!gp @Role all`
-
-`src/lib/fake-permissions.ts`
-
-<span style="color:#a8a9ad;">Use when the owner wants least privilege.</span>
-
-_Fake grant → checked as if the flag was held_
-
-</td>
-</tr>
-</table>
-
-> Check order is `src/lib/utils/moderation-permission-checker.ts:1` and every action rechecks `target.member.bannable` at execution. Full reference → [Bolt docs — permissions](https://bolt-docs.vercel.app/guides/fake-permissions)
-
-<p align="center" style="margin:18px 0 0 0;">
-<a href="#invite"><img alt="Invite" src="https://img.shields.io/badge/Invite-%23ff482c?style=for-the-badge&labelColor=%230c0c0d&color=%23ff482c" /></a>&nbsp;
-<a href="#self-host"><img alt="Self-host" src="https://img.shields.io/badge/Self--host-%23faf8f3?style=for-the-badge&labelColor=%230c0c0d&color=%23e8e8e6" /></a>&nbsp;
-<a href="https://bolt-docs.vercel.app"><img alt="Docs" src="https://img.shields.io/badge/Docs-bolt--docs.vercel.app-ff482c?style=for-the-badge" /></a>
-</p>
+> Check order is `src/lib/utils/moderation-permission-checker.ts:1` and every action rechecks `target.member.bannable` at execution. Full reference → [Bolt docs — permissions](https://boltdoc.vercel.app/guides/fake-permissions)
 
 ---
 
@@ -123,7 +70,7 @@ Presets: `chatmod` → purge, slowmode, timeout, warn · `mod` → kick, timeout
 /permissions @User   # see Key I vs Key II
 ```
 
-Full guide: [bolt-docs.vercel.app/guides/fake-permissions](https://bolt-docs.vercel.app/guides/fake-permissions) — source `site/src/content/fake-permissions.md`
+Full guide: [boltdoc.vercel.app/guides/fake-permissions](https://boltdoc.vercel.app/guides/fake-permissions) — source `site/src/content/fake-permissions.md`
 
 </details>
 
@@ -146,7 +93,7 @@ SendMessages  EmbedLinks  ReadMessageHistory  ViewChannel
 https://discord.com/api/oauth2/authorize?client_id=1424440972758220800&permissions=1101017476118&scope=bot%20applications.commands
 ```
 
-For slash, keep `applications.commands`. Enable the intents you use. Docs: [bolt-docs.vercel.app](https://bolt-docs.vercel.app) · [Invite guide](https://bolt-docs.vercel.app/guides/invite-permissions)
+For slash, keep `applications.commands`. Enable the intents you use. Docs: [boltdoc.vercel.app](https://boltdoc.vercel.app) · [Invite guide](https://boltdoc.vercel.app/guides/invite-permissions)
 
 ## Self-host
 
@@ -243,6 +190,6 @@ PRs welcome. Read `CONTRIBUTING.md`, add tests for behavior changes, run `npm ru
 
 Elastic License 2.0 — `LICENSE.md`. Source-available, not open-source. Do not offer Bolt as a hosted service.
 
-<p align="center" style="margin-top:28px;">
-<sub style="color:#6b6b6b;">Bolt — TypeScript · <a href="https://github.com/sapphiredev/framework" style="color:#6b6b6b;">Sapphire Framework</a> · discord.js · MongoDB · ELv2</sub>
+<p align="center">
+<sub>Bolt — TypeScript · <a href="https://github.com/sapphiredev/framework">Sapphire Framework</a> · discord.js · MongoDB · ELv2</sub>
 </p>
