@@ -22,6 +22,10 @@ export interface GuildConfigDocument {
     message: string;
   };
   adminRoleIds: string[];
+  /** Bot-side moderator keys: moderation commands only, never admin surface, never grants. */
+  modRoleIds: string[];
+  /** Granular fake Discord permissions per role — no real Discord perm is granted. */
+  fakePermissions?: Record<string, string[]>;
   mutedRoleId?: string;
   jailRoleId?: string;
   jailChannelId?: string;
@@ -52,6 +56,8 @@ const GuildConfigSchema = new Schema<GuildConfigDocument>(
       message: { type: String, required: false, maxlength: 2_000 }
     },
     adminRoleIds: { type: [String], default: [] },
+    modRoleIds: { type: [String], default: [] },
+    fakePermissions: { type: Schema.Types.Mixed, default: {} },
     mutedRoleId: { type: String, required: false },
     jailRoleId: { type: String, required: false },
     jailChannelId: { type: String, required: false },

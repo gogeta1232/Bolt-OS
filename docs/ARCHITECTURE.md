@@ -1,6 +1,6 @@
 # Architecture
 
-Bolt is a modular Discord application built around Sapphire pieces and explicitly wired services.
+Bolt is a modular Discord application built around [Sapphire Framework](https://github.com/sapphiredev/framework) pieces and explicitly wired services.
 
 ```text
 Discord events and interactions

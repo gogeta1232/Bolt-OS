@@ -122,6 +122,12 @@ Test externally visible behavior rather than private implementation details. Bug
 
 Do not put business logic in Discord listeners, global singletons or database model hooks when a typed service is the correct owner.
 
+## Site UI copy rules
+
+- Ship end-user copy only. Never render agent process, build notes, meta commentary or prompt residue as user-facing text. Forbidden in UI: captions explaining what a component is or how it was built ("live profile — exactly as Discord shows it"), notes describing layout decisions ("avatar and banner stay together here"), and any wording that narrates the agent's work instead of serving the reader.
+- Every string on screen must earn its place for a server mod or admin: one job per element, no duplicated facts across adjacent sections (counts, prefix, invoke style appear once per view), no unrealistic filler (fake roles, invented dates, placeholder stats).
+- Voice: plain verbs, sentence case, what the user controls — never how the system is built.
+
 ## Documentation and dependency hygiene
 
 - Update README and operational documentation when setup, environment variables, scripts, architecture or deployment behavior changes.

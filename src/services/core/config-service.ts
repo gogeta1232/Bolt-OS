@@ -2,6 +2,7 @@ import { container } from '@sapphire/framework';
 
 import { env } from '../../config/env.js';
 import { GuildConfigModel, type GuildConfigDocument } from '../../database/models/guild/GuildConfig.js';
+import { normalizeStoredPermissions } from '../../lib/fake-permissions.js';
 
 const CONFIG_CACHE_TTL_MS = 5 * 60_000;
 const CONFIG_CACHE_MAX_ENTRIES = 10_000;
@@ -11,7 +12,9 @@ const defaultConfig = (guildId: string): GuildConfigDocument => ({
   prefix: env.DEFAULT_PREFIX,
   noPrefixMode: false,
   logChannels: {},
-  adminRoleIds: []
+  adminRoleIds: [],
+  modRoleIds: [],
+  fakePermissions: {}
 });
 
 class ConfigService {
@@ -84,11 +87,34 @@ class ConfigService {
 
   private normalize(input: GuildConfigDocument | null, guildId: string): GuildConfigDocument {
     if (!input) return defaultConfig(guildId);
+    const rawFake = input.fakePermissions as unknown;
+    let fakePermissions: Record<string, string[]> = {};
+    if (rawFake instanceof Map) {
+      fakePermissions = Object.fromEntries(
+        [...(rawFake as Map<string, unknown>).entries()].map(([roleId, perms]) => [
+          roleId,
+          normalizeStoredPermissions(perms as string[])
+        ])
+      );
+    } else if (rawFake && typeof rawFake === 'object') {
+      fakePermissions = Object.fromEntries(
+        Object.entries(rawFake as Record<string, unknown>).map(([roleId, perms]) => [
+          roleId,
+          normalizeStoredPermissions(perms as string[])
+        ])
+      );
+    }
+    // Prune empty entries
+    for (const [roleId, perms] of Object.entries(fakePermissions)) {
+      if (perms.length === 0) delete fakePermissions[roleId];
+    }
     return {
       ...input,
       noPrefixMode: input.noPrefixMode ?? false,
       logChannels: input.logChannels ?? {},
-      adminRoleIds: input.adminRoleIds ?? []
+      adminRoleIds: input.adminRoleIds ?? [],
+      modRoleIds: input.modRoleIds ?? [],
+      fakePermissions
     };
   }
 

@@ -21,7 +21,7 @@ export default [
     }
   },
   {
-    ignores: ['dist/**', 'node_modules/**']
+    ignores: ['dist/**', 'node_modules/**', 'site/dist/**', 'site/node_modules/**']
   },
   js.configs.recommended,
   {

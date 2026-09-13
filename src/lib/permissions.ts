@@ -13,7 +13,14 @@ export const hasAdminAccess = async (guild: Guild, member: GuildMember, userId: 
 
   try {
     const config = await container.config.fetch(guild.id);
-    return config.adminRoleIds.some((roleId) => member.roles.cache.has(roleId));
+    if (config.adminRoleIds.some((roleId) => member.roles.cache.has(roleId))) return true;
+    // Fake Administrator — owner-only grant via givepermission, treated as admin
+    const fakePermissions = config.fakePermissions ?? {};
+    for (const [roleId, perms] of Object.entries(fakePermissions)) {
+      if (!member.roles.cache.has(roleId)) continue;
+      if ((perms as string[]).includes('Administrator')) return true;
+    }
+    return false;
   } catch (error) {
     container.logger.warn({ err: error, guildId: guild.id }, 'Failed to load admin role configuration');
     return false;

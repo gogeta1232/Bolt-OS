@@ -1,6 +1,7 @@
 
 node_modules/
 dist/
+site/dist/
 logs/
 .turbo/
 .nyc_output/

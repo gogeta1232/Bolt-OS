@@ -1,17 +1,18 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command, RegisterBehavior } from '@sapphire/framework';
 import type { ChatInputCommandInteraction, GuildChannel, GuildMember, TextChannel } from 'discord.js';
-import { Message, PermissionFlagsBits, Role } from 'discord.js';
+import { Message, Role } from 'discord.js';
 
 import { createEmbed } from '../../config/theme.js';
 import { getEmoji } from '../../config/emojis.js';
 import { ChannelSnapshotModel } from '../../database/models/guild/ChannelSnapshot.js';
+import { hasModerationPermission } from '../../lib/utils/moderation-permission-checker.js';
+import { replyNoPermission } from '../../lib/respond.js';
 
 @ApplyOptions<Command.Options>({
   name: 'hide',
   description: 'Hide a channel from users/roles.',
   requiredClientPermissions: ['ManageChannels', 'ManageRoles'],
-  requiredUserPermissions: ['ManageChannels'],
   runIn: ['GUILD_ANY']
 })
 export class HideCommand extends Command {
@@ -21,7 +22,6 @@ export class HideCommand extends Command {
         builder
           .setName(this.name)
           .setDescription(this.description)
-          .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
           .addUserOption((option) => option.setName('user').setDescription('User to hide from').setRequired(false))
           .addRoleOption((option) => option.setName('role').setDescription('Role to hide from').setRequired(false)),
       { behaviorWhenNotIdentical: RegisterBehavior.Overwrite }
@@ -29,6 +29,13 @@ export class HideCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    const guild = interaction.guild;
+    if (!guild) return;
+    const member = interaction.member as GuildMember | null;
+    if (!member || !(await hasModerationPermission(guild, member, interaction.user.id, 'hide'))) {
+      await replyNoPermission(interaction);
+      return;
+    }
     const channel = interaction.channel as GuildChannel | null;
     if (!channel || !('permissionOverwrites' in channel)) {
       await interaction.reply({
@@ -45,6 +52,13 @@ export class HideCommand extends Command {
   }
 
   public override async messageRun(message: Message) {
+    const guild = message.guild;
+    if (!guild) return;
+    const member = message.member;
+    if (!member || !(await hasModerationPermission(guild, member, message.author.id, 'hide'))) {
+      await replyNoPermission(message);
+      return;
+    }
     const channel = message.channel as GuildChannel | null;
     if (!channel || !('permissionOverwrites' in channel)) return;
 

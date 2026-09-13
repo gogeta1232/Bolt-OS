@@ -1,29 +1,38 @@
 import type { Guild, GuildMember, PermissionResolvable } from 'discord.js';
 import { container } from '@sapphire/pieces';
 
+import { getMemberFakePermissions, hasRequiredFakePermission, normalizePermissionToken } from '../fake-permissions.js';
+
 /**
  * Result of permission check with detailed information.
- * Native Discord perms first, configured adminRoleIds as fallback.
- * No custom DB permission layer — single source of truth is Discord.
+ * Chain: owner → Administrator → command Discord perm → adminRole → fakePerm → modRole.
+ * adminRole = full bot access. modRole = moderation commands only, never admin
+ * surface, never grants. fakePerm = granular per-permission grants without real Discord perms.
+ * Both are plain Discord roles imbued by Bolt.
  */
 export interface PermissionCheckResult {
   hasPermission: boolean;
-  permissionType: 'owner' | 'administrator' | 'realPerms' | 'adminRole' | 'none';
+  permissionType: 'owner' | 'administrator' | 'realPerms' | 'adminRole' | 'fakePerms' | 'modRole' | 'none';
   checkedAdminRoles?: string[];
+  matchedFakePerms?: string[];
 }
 
-const REAL_PERMISSION_BY_COMMAND: Record<string, PermissionResolvable[]> = {
+export const REAL_PERMISSION_BY_COMMAND: Record<string, PermissionResolvable[]> = {
   ban: ['BanMembers'],
   unban: ['BanMembers'],
   softban: ['BanMembers'],
   kick: ['KickMembers'],
   timeout: ['ModerateMembers'],
+  untimeout: ['ModerateMembers'],
   warn: ['ModerateMembers', 'KickMembers', 'BanMembers', 'ManageMessages'],
   mute: ['ManageRoles'],
+  unmute: ['ManageRoles'],
   jail: ['ModerateMembers', 'ManageRoles'],
   unjail: ['ModerateMembers', 'ManageRoles'],
   purge: ['ManageMessages'],
   slowmode: ['ManageChannels'],
+  hide: ['ManageChannels'],
+  unhide: ['ManageChannels'],
   voice: ['MoveMembers', 'MuteMembers', 'DeafenMembers'],
   nick: ['ManageNicknames'],
   role: ['ManageRoles'],
@@ -35,11 +44,11 @@ const REAL_PERMISSION_BY_COMMAND: Record<string, PermissionResolvable[]> = {
 
 const DEFAULT_REAL_PERMISSIONS: PermissionResolvable[] = ['ManageGuild'];
 
-const getRequiredRealPermissions = (commandType: string) =>
+export const getRequiredRealPermissions = (commandType: string): PermissionResolvable[] =>
   REAL_PERMISSION_BY_COMMAND[commandType.toLowerCase()] ?? DEFAULT_REAL_PERMISSIONS;
 
 /**
- * Permission checker: owner → admin → command Discord perm → adminRole.
+ * Permission checker: owner → admin → command Discord perm → adminRole → fakePerm → modRole.
  * Sync checks first, single async config fetch only as last resort.
  */
 export async function checkModerationPermission(
@@ -62,29 +71,102 @@ export async function checkModerationPermission(
     return { hasPermission: true, permissionType: 'realPerms' };
   }
 
-  const adminRoleCheck = await checkAdminRole(guild.id, member);
+  const botKeys = await checkBotKeys(guild.id, member);
 
-  if (adminRoleCheck.hasRole) {
+  if (botKeys.hasAdminRole) {
     return {
       hasPermission: true,
       permissionType: 'adminRole',
-      checkedAdminRoles: adminRoleCheck.roleIds
+      checkedAdminRoles: botKeys.adminRoleIds
+    };
+  }
+
+  // Fake Administrator — owner-only grant, treated as admin for all commands
+  if (botKeys.hasFakeAdmin) {
+    return {
+      hasPermission: true,
+      permissionType: 'fakePerms',
+      matchedFakePerms: ['Administrator']
+    };
+  }
+
+  const fakeCheck = hasGranularFakePermission(botKeys.fakePermissions, member, commandType);
+  if (fakeCheck.hasPermission) {
+    return {
+      hasPermission: true,
+      permissionType: 'fakePerms',
+      matchedFakePerms: fakeCheck.matched
+    };
+  }
+
+  if (botKeys.hasModRole) {
+    return {
+      hasPermission: true,
+      permissionType: 'modRole',
+      checkedAdminRoles: botKeys.modRoleIds
     };
   }
 
   return { hasPermission: false, permissionType: 'none' };
 }
 
-async function checkAdminRole(guildId: string, member: GuildMember): Promise<{ hasRole: boolean; roleIds: string[] }> {
+const hasGranularFakePermission = (
+  fakePermissions: Readonly<Record<string, readonly string[]>> | undefined,
+  member: GuildMember,
+  commandType: string
+): { hasPermission: boolean; matched: string[] } => {
+  if (!fakePermissions || Object.keys(fakePermissions).length === 0) return { hasPermission: false, matched: [] };
+  const memberRoleIds = [...member.roles.cache.keys()];
+  const fakeSet = getMemberFakePermissions(memberRoleIds, fakePermissions);
+  if (fakeSet.size === 0) return { hasPermission: false, matched: [] };
+  const required = getRequiredRealPermissions(commandType).map((perm) => {
+    const normalized = normalizePermissionToken(String(perm));
+    return normalized ?? String(perm);
+  });
+  const matched = required.filter((perm) => fakeSet.has(perm));
+  if (hasRequiredFakePermission(fakeSet, required)) {
+    return { hasPermission: true, matched };
+  }
+  return { hasPermission: false, matched: [] };
+};
+
+async function checkBotKeys(
+  guildId: string,
+  member: GuildMember
+): Promise<{
+  hasAdminRole: boolean;
+  hasModRole: boolean;
+  hasFakeAdmin: boolean;
+  adminRoleIds: string[];
+  modRoleIds: string[];
+  fakePermissions: Record<string, string[]>;
+}> {
   try {
     const config = await container.config.fetch(guildId);
     const adminRoleIds = config.adminRoleIds || [];
-    const hasRole = adminRoleIds.some((roleId: string) => member.roles.cache.has(roleId));
-
-    return { hasRole, roleIds: adminRoleIds };
+    const modRoleIds = config.modRoleIds || [];
+    const fakePermissions = (config.fakePermissions ?? {}) as Record<string, string[]>;
+    const hasFakeAdmin = Object.entries(fakePermissions).some(
+      ([roleId, perms]) => member.roles.cache.has(roleId) && (perms as string[]).includes('Administrator')
+    );
+    return {
+      hasAdminRole: adminRoleIds.some((roleId: string) => member.roles.cache.has(roleId)),
+      hasModRole: modRoleIds.some((roleId: string) => member.roles.cache.has(roleId)),
+      hasFakeAdmin,
+      adminRoleIds,
+      modRoleIds,
+      fakePermissions
+    };
   } catch (error) {
-    container.logger.warn({ err: error, guildId }, 'Failed to load admin role configuration');
-    return { hasRole: false, roleIds: [] };
+    container.logger.warn({ err: error, guildId }, 'Failed to load bot role configuration');
+    return {
+      hasAdminRole: false,
+      hasModRole: false,
+      hasFakeAdmin: false,
+      adminRoleIds: [],
+      modRoleIds: [],
+      fakePermissions: {}
+    };
   }
 }
 
