@@ -52,10 +52,13 @@ export class ModerationPermissionPrecondition extends AllFlowsPrecondition {
 
     try {
       const config = await container.config.fetch(guild.id);
-      const hasAdminRole = (config.adminRoleIds ?? []).some((roleId: string) => member.roles.cache.has(roleId));
+      const roles = member.roles.cache;
+      const hasAdminRole = (config.adminRoleIds ?? []).some((roleId: string) => roles.has(roleId));
       if (hasAdminRole) return this.ok();
+      const hasModRole = (config.modRoleIds ?? []).some((roleId: string) => roles.has(roleId));
+      if (hasModRole) return this.ok();
     } catch {
-      // Fall through to denial — config fetch failure means no admin-role grant.
+      // Fall through to denial — config fetch failure means no bot-key grant.
     }
 
     return this.error({ message: 'You do not have permission to use this command.', context });

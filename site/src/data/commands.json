@@ -1,0 +1,1274 @@
+{
+  "generatedAt": "2026-09-13T13:03:11.137Z",
+  "source": "src/commands",
+  "count": 44,
+  "defaultPrefix": "!",
+  "commands": [
+    {
+      "name": "autoresponder",
+      "description": "Manage auto responses.",
+      "module": "admin",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!autoresponder <add|remove|list> <trigger> <response> [case_sensitive] [use_embed]",
+      "slashOptions": [
+        {
+          "name": "trigger",
+          "description": "Trigger to remove",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "response",
+          "description": "Bot response",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "case_sensitive",
+          "description": "Trigger is case sensitive",
+          "type": "Boolean",
+          "required": false
+        },
+        {
+          "name": "use_embed",
+          "description": "Send response as embed (default: false)",
+          "type": "Boolean",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/admin/autoresponder.ts"
+    },
+    {
+      "name": "clearsnipe",
+      "description": "Clear snipe cache for a channel or entire server.",
+      "module": "admin",
+      "aliases": [
+        "purgesnipe",
+        "snipeclear"
+      ],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!clearsnipe <channel|server> [target]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Channel to clear (defaults to current)",
+          "type": "Channel",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/admin/clearsnipe.ts"
+    },
+    {
+      "name": "setgreetchannel",
+      "description": "Manage channels for greeting new members.",
+      "module": "admin",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!setgreetchannel <add|remove|list|message> <channels> <template>",
+      "slashOptions": [
+        {
+          "name": "channels",
+          "description": "A list of channels to remove (e.g. #channel1 #channel2)",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "template",
+          "description": "Message template (use {{user}} for user mention)",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/admin/setgreetchannel.ts"
+    },
+    {
+      "name": "setjailchannel",
+      "description": "Set the channel to limit jailed members to.",
+      "module": "admin",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!setjailchannel [channel] [show]",
+      "slashOptions": [
+        {
+          "name": "channel",
+          "description": "Channel to limit jailed members to",
+          "type": "Channel",
+          "required": false
+        },
+        {
+          "name": "show",
+          "description": "Show current jail channel settings",
+          "type": "Boolean",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/admin/setjailchannel.ts"
+    },
+    {
+      "name": "setjailrole",
+      "description": "Configure the jail role and view jail settings.",
+      "module": "admin",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!setjailrole <role|show> <role>",
+      "slashOptions": [
+        {
+          "name": "role",
+          "description": "Role to use for jailing members",
+          "type": "Role",
+          "required": true
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/admin/setjailrole.ts"
+    },
+    {
+      "name": "setprefix",
+      "description": "Update the command prefix for this guild.",
+      "module": "admin",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!setprefix <prefix>",
+      "slashOptions": [
+        {
+          "name": "prefix",
+          "description": "New command prefix",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/admin/setprefix.ts"
+    },
+    {
+      "name": "setup",
+      "description": "Logging setup wizard: route each log type to a channel.",
+      "module": "admin",
+      "aliases": [
+        "config",
+        "configure",
+        "setlogs",
+        "logs"
+      ],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!setup",
+      "slashOptions": [],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/admin/setup.ts"
+    },
+    {
+      "name": "setwelcome",
+      "description": "Configure welcome channel and message.",
+      "module": "admin",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!setwelcome <channel> <message>",
+      "slashOptions": [
+        {
+          "name": "channel",
+          "description": "Welcome channel",
+          "type": "Channel",
+          "required": true
+        },
+        {
+          "name": "message",
+          "description": "Welcome message template",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/admin/setwelcome.ts"
+    },
+    {
+      "name": "ban",
+      "description": "Ban a member from the guild.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!ban <target> [reason] [evidence]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to ban",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Reason for ban",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Evidence attachment",
+          "type": "Attachment",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "BanMembers",
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/ban.ts"
+    },
+    {
+      "name": "cases",
+      "description": "View moderation cases for this guild.",
+      "module": "moderation",
+      "aliases": [
+        "case",
+        "Cases",
+        "CASES"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!cases <latest|view|update|user> [limit] <id> [reason] [evidence] <target>",
+      "slashOptions": [
+        {
+          "name": "limit",
+          "description": "Number of cases to view (max 20).",
+          "type": "Integer",
+          "required": false
+        },
+        {
+          "name": "id",
+          "description": "Case ID to update",
+          "type": "Integer",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Replace the case reason",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Attach new evidence (optional)",
+          "type": "Attachment",
+          "required": false
+        },
+        {
+          "name": "target",
+          "description": "Member to view cases for",
+          "type": "User",
+          "required": true
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/cases.ts"
+    },
+    {
+      "name": "hide",
+      "description": "Hide a channel from users/roles.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!hide [user] [role]",
+      "slashOptions": [
+        {
+          "name": "user",
+          "description": "User to hide from",
+          "type": "User",
+          "required": false
+        },
+        {
+          "name": "role",
+          "description": "Role to hide from",
+          "type": "Role",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "ManageChannels",
+        "ManageRoles"
+      ],
+      "file": "src/commands/moderation/hide.ts"
+    },
+    {
+      "name": "jail",
+      "description": "Restrict a member to a specific channel, limiting their server access.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!jail <target> [reason] [evidence]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to jail",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Reason for jail",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Evidence attachment",
+          "type": "Attachment",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [],
+      "file": "src/commands/moderation/jail.ts"
+    },
+    {
+      "name": "kick",
+      "description": "Kick a member from the guild.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!kick <target> [reason] [evidence]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to kick",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Reason for kick",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Evidence attachment",
+          "type": "Attachment",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "KickMembers",
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/kick.ts"
+    },
+    {
+      "name": "mute",
+      "description": "Mute a member, optionally for a duration.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!mute <target> [duration] [reason] [evidence]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to mute",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "duration",
+          "description": "Duration (e.g. 1m, 1h, 1d)",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "description": "Reason for mute",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Evidence attachment",
+          "type": "Attachment",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "ManageRoles"
+      ],
+      "file": "src/commands/moderation/mute.ts"
+    },
+    {
+      "name": "nick",
+      "description": "Change or reset a member nickname.",
+      "module": "moderation",
+      "aliases": [
+        "nickname"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!nick <target> [nickname]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to rename",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "nickname",
+          "description": "New nickname (leave empty to reset)",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "ManageNicknames"
+      ],
+      "file": "src/commands/moderation/nick.ts"
+    },
+    {
+      "name": "purge",
+      "description": "Remove recent messages quickly.",
+      "module": "moderation",
+      "aliases": [
+        "clean",
+        "clear"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!purge [amount] [user] [scope]",
+      "slashOptions": [
+        {
+          "name": "amount",
+          "description": "How many messages to remove (processed in batches of 100)",
+          "type": "Integer",
+          "required": false
+        },
+        {
+          "name": "user",
+          "description": "Only delete messages from this user",
+          "type": "User",
+          "required": false
+        },
+        {
+          "name": "scope",
+          "description": "Limit deletion to bot or user messages",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "ManageMessages",
+        "ReadMessageHistory",
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/purge.ts"
+    },
+    {
+      "name": "role",
+      "description": "Toggle a role for a member using intelligent matching.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!role <target> [role] [role_name] [reason] [evidence]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to toggle the role for",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "role",
+          "description": "Role to toggle",
+          "type": "Role",
+          "required": false
+        },
+        {
+          "name": "role_name",
+          "description": "Role name to search for",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "description": "Reason for the toggle",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Evidence attachment",
+          "type": "Attachment",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "ManageRoles"
+      ],
+      "file": "src/commands/moderation/role.ts"
+    },
+    {
+      "name": "slowmode",
+      "description": "Adjust channel slowmode or toggle locks.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!slowmode <set|lock|unlock> [seconds] [channel] [reason]",
+      "slashOptions": [
+        {
+          "name": "seconds",
+          "description": "Slowmode delay in seconds",
+          "type": "Integer",
+          "required": false
+        },
+        {
+          "name": "channel",
+          "description": "Target channel (defaults to current)",
+          "type": "Channel",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "description": "Why are you changing slowmode?",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "ManageChannels",
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/slowmode.ts"
+    },
+    {
+      "name": "softban",
+      "description": "Ban and immediately unban a member to purge recent messages.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!softban <target> [purge_days] [reason] [evidence]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to softban",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "purge_days",
+          "description": "How many days of messages to delete (1-7)",
+          "type": "Integer",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "description": "Reason for the softban",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Evidence attachment",
+          "type": "Attachment",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "BanMembers",
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/softban.ts"
+    },
+    {
+      "name": "timeout",
+      "description": "Timeout a member for a set duration.",
+      "module": "moderation",
+      "aliases": [
+        "tm"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!timeout <target> <duration> [reason] [evidence]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to timeout",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "duration",
+          "description": "Duration (e.g. 1m, 1h, 1d)",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Reason for timeout",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "evidence",
+          "description": "Evidence attachment",
+          "type": "Attachment",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "ModerateMembers",
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/timeout.ts"
+    },
+    {
+      "name": "unban",
+      "description": "Revoke a ban so a user can rejoin.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!unban <target> [reason]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Banned user to unban",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Reason for unbanning",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "BanMembers",
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/unban.ts"
+    },
+    {
+      "name": "unhide",
+      "description": "Unhide a channel for users/roles.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!unhide [user] [role]",
+      "slashOptions": [
+        {
+          "name": "user",
+          "description": "User to unhide for",
+          "type": "User",
+          "required": false
+        },
+        {
+          "name": "role",
+          "description": "Role to unhide for",
+          "type": "Role",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "ManageChannels",
+        "ManageRoles"
+      ],
+      "file": "src/commands/moderation/unhide.ts"
+    },
+    {
+      "name": "unjail",
+      "description": "Remove jail restrictions from a member.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!unjail <target> [reason]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to unjail",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Reason for unjail",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [],
+      "file": "src/commands/moderation/unjail.ts"
+    },
+    {
+      "name": "voice",
+      "description": "Moderate members in voice channels.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!voice <mute|unmute|deafen|undeafen|disconnect> <target> [reason]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to disconnect",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Reason",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "MuteMembers",
+        "DeafenMembers",
+        "MoveMembers"
+      ],
+      "file": "src/commands/moderation/voice.ts"
+    },
+    {
+      "name": "warn",
+      "description": "Issue and manage warnings.",
+      "module": "moderation",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!warn <issue|history|clear|remove> <target> [index]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to clear warnings for",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "index",
+          "description": "Which warning to remove (1 = most recent)",
+          "type": "Integer",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/moderation/warn.ts"
+    },
+    {
+      "name": "fadmin",
+      "description": "Grant or revoke the Bolt admin key on a role (owner-only).",
+      "module": "permissions",
+      "aliases": [
+        "setadminrole"
+      ],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!fadmin <role>",
+      "slashOptions": [
+        {
+          "name": "role",
+          "description": "Role to grant or remove bot admin access",
+          "type": "Role",
+          "required": true
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/permissions/fadmin.ts"
+    },
+    {
+      "name": "fmod",
+      "description": "Grant or revoke the Bolt mod key on a role (owner and admins).",
+      "module": "permissions",
+      "aliases": [],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!fmod <role>",
+      "slashOptions": [
+        {
+          "name": "role",
+          "description": "Role to grant or remove mod access",
+          "type": "Role",
+          "required": true
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/permissions/fmod.ts"
+    },
+    {
+      "name": "givepermission",
+      "description": "Grant granular fake permissions to roles — no Discord perms needed.",
+      "module": "permissions",
+      "aliases": [
+        "gp",
+        "fakeperm",
+        "fp"
+      ],
+      "adminOnly": true,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!givepermission add <role> <permissions> | !gp @Role <permissions> | !givepermission guide",
+      "slashOptions": [
+        {
+          "name": "role",
+          "description": "Role to manage (grant/remove/list/clear)",
+          "type": "Role",
+          "required": true
+        },
+        {
+          "name": "permissions",
+          "description": "Permissions: admin, ban, unban, softban, kick, timeout, untimeout, warn, mute, unmute, jail, unjail, purge, slowmode, nick, role, voice, hide, unhide, cases — presets: chatmod, mod, seniormod, full, all (admin owner only)",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "member",
+          "description": "Member to inspect",
+          "type": "User",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/permissions/givepermission.ts"
+    },
+    {
+      "name": "permissions",
+      "description": "Show how access resolves — Discord keys vs Bolt roles.",
+      "module": "permissions",
+      "aliases": [
+        "access"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!permissions [member]",
+      "slashOptions": [
+        {
+          "name": "member",
+          "description": "Whose access to inspect (admins only).",
+          "type": "User",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/permissions/permissions.ts"
+    },
+    {
+      "name": "afk",
+      "description": "Set or clear your AFK status (admins can manage others).",
+      "module": "utility",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!afk <set|clear|status>",
+      "slashOptions": [],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/utility/afk.ts"
+    },
+    {
+      "name": "avatar",
+      "description": "Display a user avatar in crisp resolution.",
+      "module": "utility",
+      "aliases": [
+        "pfp",
+        "icon",
+        "av"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!avatar [target]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Whose avatar do you want to view?",
+          "type": "User",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/avatar.ts"
+    },
+    {
+      "name": "boostcount",
+      "description": "Show the server boost count and tier.",
+      "module": "utility",
+      "aliases": [
+        "bc"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!boostcount",
+      "slashOptions": [],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/utility/boostcount.ts"
+    },
+    {
+      "name": "editsnipe",
+      "description": "Retrieve recently edited messages in the channel",
+      "module": "utility",
+      "aliases": [
+        "esnipe",
+        "es"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!editsnipe [channel]",
+      "slashOptions": [
+        {
+          "name": "channel",
+          "description": "The channel to snipe from (defaults to current)",
+          "type": "Channel",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/editsnipe.ts"
+    },
+    {
+      "name": "greet",
+      "description": "Ping a member in the greet channel to welcome them.",
+      "module": "utility",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!greet <member> [message]",
+      "slashOptions": [
+        {
+          "name": "member",
+          "description": "Member to greet",
+          "type": "User",
+          "required": true
+        },
+        {
+          "name": "message",
+          "description": "Custom greeting message",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [],
+      "file": "src/commands/utility/greet.ts"
+    },
+    {
+      "name": "help",
+      "description": "Display available commands or inspect a specific one.",
+      "module": "utility",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!help [command]",
+      "slashOptions": [
+        {
+          "name": "command",
+          "description": "Show details for a specific command.",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/utility/help.ts"
+    },
+    {
+      "name": "membercount",
+      "description": "Show server member statistics.",
+      "module": "utility",
+      "aliases": [
+        "members",
+        "mc"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!membercount",
+      "slashOptions": [],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/utility/membercount.ts"
+    },
+    {
+      "name": "ping",
+      "description": "Check bot latency",
+      "module": "utility",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!ping",
+      "slashOptions": [],
+      "requiredClientPermissions": [
+        "SendMessages"
+      ],
+      "file": "src/commands/utility/ping.ts"
+    },
+    {
+      "name": "roleinfo",
+      "description": "Inspect a role",
+      "module": "utility",
+      "aliases": [
+        "ri",
+        "role",
+        "r"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!roleinfo [role]",
+      "slashOptions": [
+        {
+          "name": "role",
+          "description": "Role to inspect",
+          "type": "Role",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/roleinfo.ts"
+    },
+    {
+      "name": "serverbanner",
+      "description": "Display the server banner in crisp resolution.",
+      "module": "utility",
+      "aliases": [
+        "sbanner",
+        "guildbanner"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!serverbanner",
+      "slashOptions": [],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/serverbanner.ts"
+    },
+    {
+      "name": "serverinfo",
+      "description": "Summarize the current server at a glance.",
+      "module": "utility",
+      "aliases": [
+        "server",
+        "si"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!serverinfo",
+      "slashOptions": [],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/serverinfo.ts"
+    },
+    {
+      "name": "snipe",
+      "description": "Retrieve recently deleted messages in the channel",
+      "module": "utility",
+      "aliases": [],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!snipe [channel]",
+      "slashOptions": [
+        {
+          "name": "channel",
+          "description": "The channel to snipe from (defaults to current)",
+          "type": "Channel",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/snipe.ts"
+    },
+    {
+      "name": "steal",
+      "description": "Steal an emoji or convert an image to emoji/sticker",
+      "module": "utility",
+      "aliases": [
+        "addemoji",
+        "add"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!steal [emoji] [image] [name]",
+      "slashOptions": [
+        {
+          "name": "emoji",
+          "description": "The emoji to steal (paste the emoji)",
+          "type": "String",
+          "required": false
+        },
+        {
+          "name": "image",
+          "description": "Upload an image to convert to emoji/sticker",
+          "type": "Attachment",
+          "required": false
+        },
+        {
+          "name": "name",
+          "description": "Name for the emoji/sticker",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "ManageEmojisAndStickers",
+        "SendMessages"
+      ],
+      "file": "src/commands/utility/steal.ts"
+    },
+    {
+      "name": "userbanner",
+      "description": "Display a user banner in crisp resolution.",
+      "module": "utility",
+      "aliases": [
+        "ubanner",
+        "profilebanner",
+        "banner"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!userbanner [target]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Whose banner do you want to view?",
+          "type": "User",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/userbanner.ts"
+    },
+    {
+      "name": "userinfo",
+      "description": "Inspect a member profile with roles and timestamps.",
+      "module": "utility",
+      "aliases": [
+        "whois",
+        "wi"
+      ],
+      "adminOnly": false,
+      "supportsSlash": true,
+      "supportsPrefix": true,
+      "prefixUsage": "!userinfo [target]",
+      "slashOptions": [
+        {
+          "name": "target",
+          "description": "Member to inspect",
+          "type": "User",
+          "required": false
+        }
+      ],
+      "requiredClientPermissions": [
+        "SendMessages",
+        "EmbedLinks"
+      ],
+      "file": "src/commands/utility/userinfo.ts"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+name: Sync docs to bolt-docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/commands/**'
+      - 'src/lib/fake-permissions.ts'
+      - 'src/lib/access-overview.ts'
+      - 'src/scripts/export-commands.ts'
+      - 'site/src/content/**'
+      - 'site/src/data/commands.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-and-dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Export commands.json
+        run: npm run docs:export
+      - name: Commit updated commands.json if changed
+        run: |
+          if git diff --quiet -- site/src/data/commands.json; then
+            echo "No commands.json change"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add site/src/data/commands.json
+            git commit -m "chore(docs): refresh commands.json from source"
+            git push
+          fi
+      - name: Dispatch to bolt-docs
+        if: github.repository == 'gogeta1232/Bolt-OS'
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_SYNC_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "DOCS_SYNC_TOKEN not set — skipping dispatch (bolt-docs will sync via scheduled fetch)"; exit 0; fi
+          gh api repos/gogeta1232/bolt-docs/dispatches -f event_type=bolt-os-commands-updated

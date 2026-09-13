@@ -51,11 +51,16 @@ const MODULE_META: Record<string, ModuleMeta> = {
   admin: {
     label: 'Administration',
     icon: 'settings',
-    description: 'Server setup — prefixes, logging, roles and automation.'
+    description: 'Server setup — prefixes, logging and automation.'
+  },
+  permissions: {
+    label: 'Permissions',
+    icon: 'lock',
+    description: 'Who can do what — Discord keys, Bolt admin/mod and granular fake perms.'
   }
 };
 
-const MODULE_ORDER = ['utility', 'moderation', 'admin'];
+const MODULE_ORDER = ['utility', 'moderation', 'admin', 'permissions'];
 
 const metaFor = (id: string): ModuleMeta =>
   MODULE_META[id] ?? {

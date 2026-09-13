@@ -1,102 +1,250 @@
-<div align="center">
-  <img src="https://cdn.discordapp.com/banners/1545068462118805534/10b74420e24a21949872914b6afd23a6.png?size=2048" alt="Bolt Discord profile banner" width="920" />
+<div align="center" style="max-width:920px;margin:0 auto;">
 
-  <br />
-  <br />
+<!-- Spec plate header: banner + stamped pfp, not a centered stack -->
+<div style="border:1.5px solid #22211e;border-radius:16px;overflow:hidden;background:#0c0c0d;line-height:0;">
 
-  <img src="https://cdn.discordapp.com/avatars/1545068462118805534/b6e4af15c01e7bf475e1b80a982e4da8.png?size=1024" alt="Bolt profile picture" width="132" />
+<img src="assets/bolt_banner.png" alt="Bolt — stamped brass plate" width="920" style="display:block;width:100%;max-width:920px;height:auto;" />
 
-  <h1>Bolt-OS</h1>
+<div style="display:flex;align-items:center;gap:16px;padding:16px 18px;background:#0c0c0d;text-align:left;line-height:1;">
 
-  <p>Discord moderation bot in TypeScript. Permission checks at execution time, MongoDB-backed state, strict defaults.</p>
+<img src="assets/bolt_pfp.webp" alt="Bolt" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:12px;border:1px solid #2a2a2a;flex:0 0 auto;" />
 
-  <p>
-    <a href="https://github.com/gogeta1232/Bolt-OS/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/gogeta1232/Bolt-OS/actions/workflows/ci.yml/badge.svg" /></a>
-    <img alt="Node 20.19+" src="https://img.shields.io/badge/Node.js-20.19%2B-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white" />
-    <img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" />
-    <img alt="Sapphire Framework" src="https://img.shields.io/badge/Sapphire-powered-5865F2?style=flat-square" />
-    <img alt="Elastic License 2.0" src="https://img.shields.io/badge/license-ELv2-F7C948?style=flat-square" />
-  </p>
+<div style="min-width:0;flex:1 1 auto;text-align:left;">
+<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.03em;color:#faf8f3;line-height:1;">Bolt</div>
+<div style="font-family:ui-sans-serif,system-ui,sans-serif;font-weight:500;font-size:12.5px;color:#a8a9ad;line-height:1.4;margin-top:3px;">TypeScript · <a href="https://github.com/sapphiredev/framework" style="color:#a8a9ad;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#3a3a3a;">Sapphire Framework</a> · MongoDB — moderation that rechecks at execution</div>
 </div>
 
-Bolt-OS is the public copy of Bolt: moderation, cases, logging, AFK tools and server utilities in one TypeScript codebase. It runs on Sapphire and discord.js, with MongoDB as the source of truth.
+<div style="flex:0 0 auto;display:flex;gap:8px;align-items:center;">
+<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:0.04em;color:#0c0c0d;background:#f7b626;padding:7px 10px;border-radius:999px;">ELv2</span>
+<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#e8e8e6;border:1px solid #2a2a2a;padding:6px 10px;border-radius:999px;">slash + prefix</span>
+</div>
 
-> [!IMPORTANT]
-> Bolt-OS is distributed under the Elastic License 2.0. You can read, modify and self-host it under those terms, but ELv2 is source-available rather than OSI open source, and it restricts offering the software as a hosted or managed service. See [LICENSE.md](LICENSE.md).
+</div>
+</div>
 
-## What it covers
+<p style="margin:14px 0 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6b6b6b;">
+44 commands · 4 modules · per-guild config · cases with evidence
+</p>
 
-- Moderation: ban, unban, softban, kick, timeout, mute, warn, jail, purge, slowmode, nick, role and voice controls. Permissions and role hierarchy are rechecked when the action runs, not when the menu was opened.
-- Cases and warnings: indexed lookups, per-guild configuration, confirmation flows for destructive actions.
-- Logging: member, message, channel, role and moderation events with compact embeds.
-- Utilities: afk, snipe and editsnipe, userinfo and serverinfo, avatar and banner lookups, help, ping and counters.
-- Admin setup: prefix, admin role, greet and welcome channels, jail role and channel, autoresponder, all through atomic guild config writes.
+</div>
 
-## Requirements
+---
 
-- Node.js 20.19 or newer
-- A MongoDB deployment (Atlas or self-hosted)
-- A Discord application with a bot token, and the gateway intents your deployment uses enabled in the Developer Portal
+### Two ways to grant power. You choose.
 
-## Quick start
+Bolt does not force you into one permission model. Both are checked live on every command.
+
+<table>
+<tr>
+<td width="50%" valign="top" style="background:#161617;border:1px solid #2a2a2e;border-radius:12px;padding:16px;color:#d6d6d8;">
+
+<div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;">
+<span style="width:8px;height:8px;border-radius:999px;background:#6b7280;display:inline-block;"></span>
+<span style="font-family:ui-sans-serif,system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:-0.01em;color:#faf8f3;">Native — use Discord</span>
+</div>
+
+Role has real Discord perms. Other bots see it too.
+
+`BanMembers` for ban, `KickMembers` for kick, `ModerateMembers` for timeout, `ManageMessages` for purge, etc.
+
+<span style="color:#a8a9ad;">Use when the role should be powerful everywhere.</span>
+
+_Owner → Administrator → real flag_
+
+</td>
+<td width="50%" valign="top" style="background:#0c0c0d;border:1px solid #ff482c;border-radius:12px;padding:16px;color:#e8e8e6;">
+
+<div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;">
+<span style="width:8px;height:8px;border-radius:999px;background:#ff482c;display:inline-block;box-shadow:0 0 8px rgba(255,72,44,0.6);"></span>
+<span style="font-family:ui-sans-serif,system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:-0.01em;color:#faf8f3;">Fake — Bolt only · more secure</span>
+</div>
+
+Role has **zero** Discord perms. Only Bolt enforces it. No stray Discord grants.
+
+`/givepermission add @Role ban kick timeout`  
+`!gp @Role chatmod` · `!gp @Role all`
+
+`src/lib/fake-permissions.ts`
+
+<span style="color:#a8a9ad;">Use when the owner wants least privilege.</span>
+
+_Fake grant → checked as if the flag was held_
+
+</td>
+</tr>
+</table>
+
+> Check order is `src/lib/utils/moderation-permission-checker.ts:1` and every action rechecks `target.member.bannable` at execution. Full reference → [Bolt docs — permissions](https://bolt-docs.vercel.app/guides/fake-permissions)
+
+
+
+<p align="center" style="margin:18px 0 0 0;">
+<a href="#invite"><img alt="Invite" src="https://img.shields.io/badge/Invite-%23ff482c?style=for-the-badge&labelColor=%230c0c0d&color=%23ff482c" /></a>&nbsp;
+<a href="#self-host"><img alt="Self-host" src="https://img.shields.io/badge/Self--host-%23faf8f3?style=for-the-badge&labelColor=%230c0c0d&color=%23e8e8e6" /></a>&nbsp;
+<a href="https://bolt-docs.vercel.app"><img alt="Docs" src="https://img.shields.io/badge/Docs-bolt--docs.vercel.app-ff482c?style=for-the-badge" /></a>
+</p>
+
+---
+
+## What it does
+
+A moderation bot that stays calm when things get messy. Every action writes a numbered case with reason, evidence and DM status, and routes it to your log channels.
+
+**Ladder** warn → mute / timeout → kick → ban / softban → jail (single-channel restrict)  
+**Cases** auto-numbered, editable, `!cases @user` / `/cases view #12`  
+**Cleanup** purge (user filter), slowmode, hide / unhide · **Identity** nick, role, voice · **Recovery** snipe / editsnipe · **Utility** afk, user/server/role info, steal emoji, greet
+
+Works the same over slash and prefix. Per-guild prefix via `/setprefix`, slash always works.
+
+<details>
+<summary><strong>Permission grants at a glance</strong> — 20 choices + presets</summary>
+
+| Choice                          | Unlocks                                                 | Flag                                                               |
+| ------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
+| `admin`                         | **fake Administrator** — full + grant mods (owner only) | `Administrator`                                                    |
+| `ban` `unban` `softban`         | ban, unban, softban                                     | `BanMembers`                                                       |
+| `kick`                          | kick                                                    | `KickMembers`                                                      |
+| `timeout` `untimeout` `warn`    | timeout, remove timeout, warn                           | `ModerateMembers`                                                  |
+| `mute` `unmute` `jail` `unjail` | mute, jail                                              | `ManageRoles` + `ModerateMembers`                                  |
+| `purge`                         | purge / clear                                           | `ManageMessages`                                                   |
+| `slowmode` `hide` `unhide`      | slowmode, hide channel                                  | `ManageChannels`                                                   |
+| `nick` `role` `voice` `cases`   | nick, role toggle, voice, view cases                    | `ManageNicknames` / `ManageRoles` / `MoveMembers` / `ViewAuditLog` |
+
+Presets: `chatmod` → purge, slowmode, timeout, warn · `mod` → kick, timeout, warn, mute, purge, slowmode, nick · `seniormod` / `full` / `all` → everything (add `admin` via owner: `!gp @Role admin`)
+
+```
+# slash
+/givepermission add role:@Trial permissions:kick, timeout, warn
+/givepermission add role:@Trial permissions:chatmod
+
+# prefix — shorthand is an add
+!gp @Trial kick timeout warn
+!gp @Trial ban unban
+!gp list @Trial
+!gp clear @Trial
+/permissions @User   # see Key I vs Key II
+```
+
+Full guide: [bolt-docs.vercel.app/guides/fake-permissions](https://bolt-docs.vercel.app/guides/fake-permissions) — source `site/src/content/fake-permissions.md`
+
+</details>
+
+## Invite
+
+Self-hosted only — no hosted dashboard.
+
+1. Create the application in the Discord Developer Portal.
+2. Invite with `bot` + `applications.commands`. Minimum bot perms:
+
+```
+SendMessages  EmbedLinks  ReadMessageHistory  ViewChannel
++ BanMembers  KickMembers  ModerateMembers  ManageMessages
+  ManageRoles  ManageChannels  ManageNicknames  MoveMembers / MuteMembers
+```
+
+**Quick invite (full perms `1101017476118`):**
+
+```
+https://discord.com/api/oauth2/authorize?client_id=1424440972758220800&permissions=1101017476118&scope=bot%20applications.commands
+```
+
+For slash, keep `applications.commands`. Enable the intents you use. Docs: [bolt-docs.vercel.app](https://bolt-docs.vercel.app) · [Invite guide](https://bolt-docs.vercel.app/guides/invite-permissions)
+
+## Self-host
+
+Requires Node 20.19+, MongoDB, a Discord app.
 
 ```bash
 git clone https://github.com/gogeta1232/Bolt-OS.git
 cd Bolt-OS
 npm ci
 cp .env.example .env
+# set DISCORD_TOKEN, DISCORD_CLIENT_ID, MONGO_URI
 npm run dev
 ```
 
-Fill in `.env` with development credentials only. The file is ignored by git, so it never leaves your machine. `.env.example` lists every variable the bot reads.
-
-For production:
+Production:
 
 ```bash
-npm run validate
-npm run db:indexes
+npm run validate   # format:check + check + lint + test + build
+npm run db:indexes # sync Mongo indexes on deploy
 npm run build
-npm start
+npm start          # or clustered
+npm run start:cluster
 ```
 
-Use `npm run start:cluster` for a built clustered deployment. Sharding notes are in [docs/SHARDING.md](docs/SHARDING.md).
+Env is validated on boot (`src/config/env.ts`). `.env` stays ignored. Health check at `EXPRESS_PORT`. See `docs/SHARDING.md` for clusters.
 
-## Scripts
+## Configure
 
-| Command              | Purpose                                       |
-| -------------------- | --------------------------------------------- |
-| `npm run dev`        | Start one bot process with file watching      |
-| `npm run check`      | Run strict TypeScript checks                  |
-| `npm run lint`       | Check code quality and unsafe patterns        |
-| `npm test`           | Run the unit suite once                       |
-| `npm run build`      | Produce `dist/`                               |
-| `npm run validate`   | Run the full pre-merge quality gate           |
-| `npm run db:indexes` | Synchronize MongoDB indexes during deployment |
+All per-guild settings are `GuildConfig` (`src/database/models/guild/GuildConfig.ts`) via `src/services/core/config-service.ts` — 5 min cache, atomic upserts.
 
-## Project map
+```
+/setprefix !                 # per-server, slash unaffected
+/fadmin @Role                # Bolt admin — owner only, full access
+/givepermission add @Role ban kick   # granular fake — admin+
+/fmod @Role                  # blanket mod — legacy, admin+
+/setjailrole @Role  /setjailchannel #channel
+/setwelcome #general Hello {user}
+/setup                       # route audit / moderation / message / member / voice / case logs
+/autoresponder add hi hello
+```
 
-```text
+Run `/permissions` or `!permissions @User` to see Key I (Discord) vs Key II (Bolt/fake) for anyone.
+
+## Commands
+
+| Module          | Commands                                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Moderation**  | ban, unban, softban, kick, timeout, warn, mute, jail, unjail, purge, slowmode, hide, unhide, voice, nick, role, cases                      |
+| **Permissions** | fadmin, fmod, givepermission (`gp` / `fakeperm`), permissions                                                                              |
+| **Admin**       | setup, setprefix, setjailrole, setjailchannel, setwelcome, setgreetchannel, autoresponder, clearsnipe                                      |
+| **Utility**     | help, ping, snipe, editsnipe, afk, avatar, userinfo, userbanner, serverinfo, serverbanner, roleinfo, membercount, boostcount, steal, greet |
+
+Registry is generated: `site/src/data/commands.json` via `npm run docs:export` (synced to [bolt-docs](https://github.com/gogeta1232/bolt-docs)). Docs source: `site/src/content`.
+
+## Stack & structure
+
+```
 src/
-├── commands/              Discord commands grouped by capability
-├── interaction-handlers/  Buttons, select menus, modals and autocomplete
-├── listeners/             Sapphire/Discord event pieces
-├── services/              Stateful application and infrastructure services
-├── database/models/       Mongoose schemas and indexes
-├── lib/                   Shared, mostly stateless building blocks
-├── setup/                 Dependency wiring and startup
-└── scripts/               Explicit operational jobs
+  commands/              slash + prefix, by capability
+  interaction-handlers/  buttons, menus, modals
+  listeners/             gateway events, thin only
+  services/              state, schedulers, db
+  database/models/       schemas, validation, indexes
+  lib/                   pure helpers, embeds, permission checks
+  setup/                 container wiring, boot order
+  scripts/               sync-indexes, export-commands
+site/                    docs site (Vite, searchable guides)
+tests/unit/              pure logic, no Discord connection
 ```
 
-Design notes live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATABASE.md](docs/DATABASE.md) and [docs/TESTING.md](docs/TESTING.md). Agent and contributor rules are in [AGENTS.md](AGENTS.md).
+Strict TypeScript, no `any`, [`Sapphire Framework`](https://github.com/sapphiredev/framework) pieces, `zod` env, HTTPS-only media with host allowlist and byte cap. See `docs/ARCHITECTURE.md` / `DATABASE.md` / `TESTING.md`.
+
+## Develop
+
+```bash
+npm run dev          # watch one process
+npm run check        # tsc --noEmit
+npm run lint         # eslint
+npm test             # vitest
+npm run build        # tsc → dist/
+npm run validate     # the pre-merge gate
+npm run docs:export  # refresh site data
+```
 
 ## Security
 
-Do not open a public issue for an unpatched vulnerability. Follow [SECURITY.md](SECURITY.md). Config is validated before the bot connects, remote media downloads are limited to trusted Discord HTTPS hosts with size limits, and the health endpoint exposes no secrets.
+Do not open a public issue for an unpatched vulnerability — see `SECURITY.md`. No secrets in logs or the health endpoint. Remote media is host-allowlisted and size-limited.
 
 ## Contributing
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md). Keep changes focused, add tests for behavior you changed, and run `npm run validate` before opening a pull request.
+PRs welcome. Read `CONTRIBUTING.md`, add tests for behavior changes, run `npm run validate`.
 
 ## License
 
-Licensed under the [Elastic License 2.0](LICENSE.md). Check the hosted-service restriction before running it as a public commercial service.
+Elastic License 2.0 — `LICENSE.md`. Source-available, not open-source. Do not offer Bolt as a hosted service.
+
+<p align="center" style="margin-top:28px;">
+<sub style="color:#6b6b6b;">Bolt — TypeScript · <a href="https://github.com/sapphiredev/framework" style="color:#6b6b6b;">Sapphire Framework</a> · discord.js · MongoDB · ELv2</sub>
+</p>
