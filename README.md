@@ -76,8 +76,6 @@ _Fake grant → checked as if the flag was held_
 
 > Check order is `src/lib/utils/moderation-permission-checker.ts:1` and every action rechecks `target.member.bannable` at execution. Full reference → [Bolt docs — permissions](https://bolt-docs.vercel.app/guides/fake-permissions)
 
-
-
 <p align="center" style="margin:18px 0 0 0;">
 <a href="#invite"><img alt="Invite" src="https://img.shields.io/badge/Invite-%23ff482c?style=for-the-badge&labelColor=%230c0c0d&color=%23ff482c" /></a>&nbsp;
 <a href="#self-host"><img alt="Self-host" src="https://img.shields.io/badge/Self--host-%23faf8f3?style=for-the-badge&labelColor=%230c0c0d&color=%23e8e8e6" /></a>&nbsp;
