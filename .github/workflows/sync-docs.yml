@@ -35,9 +35,9 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore(docs): refresh commands.json from source"
-          title: "chore(docs): refresh commands.json from source"
-          body: "Automated sync — `npm run docs:export` updated `site/src/data/commands.json`. This keeps `bolt-docs` in sync without manual copy."
+          commit-message: 'chore(docs): refresh commands.json from source'
+          title: 'chore(docs): refresh commands.json from source'
+          body: 'Automated sync — `npm run docs:export` updated `site/src/data/commands.json`. This keeps `bolt-docs` in sync without manual copy.'
           branch: chore/sync-commands-json
           branch-suffix: timestamp
           add-paths: site/src/data/commands.json
