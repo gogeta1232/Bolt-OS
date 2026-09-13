@@ -74,14 +74,17 @@ _Fake grant → checked as if the flag was held_
 </tr>
 </table>
 
-> Check order is `src/lib/utils/moderation-permission-checker.ts:1` and every action rechecks `target.member.bannable` at execution. Full reference → [Bolt docs — permissions](https://bolt-docs.vercel.app/guides/fake-permissions)
+> Check order is `src/lib/utils/moderation-permission-checker.ts:1` and every action rechecks `target.member.bannable` at execution. Full reference → [Bolt docs — permissions](https://boltdocs-gogeta1232s-projects.vercel.app/guides/fake-permissions)
+
+<<<<<<< HEAD
 
 
-
+=======
+>>>>>>> c111412e2e627cbdf6a57037f47361d748e660a7
 <p align="center" style="margin:18px 0 0 0;">
 <a href="#invite"><img alt="Invite" src="https://img.shields.io/badge/Invite-%23ff482c?style=for-the-badge&labelColor=%230c0c0d&color=%23ff482c" /></a>&nbsp;
 <a href="#self-host"><img alt="Self-host" src="https://img.shields.io/badge/Self--host-%23faf8f3?style=for-the-badge&labelColor=%230c0c0d&color=%23e8e8e6" /></a>&nbsp;
-<a href="https://bolt-docs.vercel.app"><img alt="Docs" src="https://img.shields.io/badge/Docs-bolt--docs.vercel.app-ff482c?style=for-the-badge" /></a>
+<a href="https://boltdocs-gogeta1232s-projects.vercel.app"><img alt="Docs" src="https://img.shields.io/badge/Docs-bolt--docs.vercel.app-ff482c?style=for-the-badge" /></a>
 </p>
 
 ---
@@ -125,7 +128,7 @@ Presets: `chatmod` → purge, slowmode, timeout, warn · `mod` → kick, timeout
 /permissions @User   # see Key I vs Key II
 ```
 
-Full guide: [bolt-docs.vercel.app/guides/fake-permissions](https://bolt-docs.vercel.app/guides/fake-permissions) — source `site/src/content/fake-permissions.md`
+Full guide: [boltdocs-gogeta1232s-projects.vercel.app/guides/fake-permissions](https://boltdocs-gogeta1232s-projects.vercel.app/guides/fake-permissions) — source `site/src/content/fake-permissions.md`
 
 </details>
 
@@ -148,7 +151,7 @@ SendMessages  EmbedLinks  ReadMessageHistory  ViewChannel
 https://discord.com/api/oauth2/authorize?client_id=1424440972758220800&permissions=1101017476118&scope=bot%20applications.commands
 ```
 
-For slash, keep `applications.commands`. Enable the intents you use. Docs: [bolt-docs.vercel.app](https://bolt-docs.vercel.app) · [Invite guide](https://bolt-docs.vercel.app/guides/invite-permissions)
+For slash, keep `applications.commands`. Enable the intents you use. Docs: [boltdocs-gogeta1232s-projects.vercel.app](https://boltdocs-gogeta1232s-projects.vercel.app) · [Invite guide](https://boltdocs-gogeta1232s-projects.vercel.app/guides/invite-permissions)
 
 ## Self-host
 
