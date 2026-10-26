@@ -42,6 +42,27 @@ const createGuild = (
 const createMessage = (guild: Guild): Message => ({ guild }) as Message;
 
 describe('MemberResolver', () => {
+  test('still resolves typo queries after an exact lookup builds the guild index', async () => {
+    const target = createMember('member-fuzzy', 'Thunder Wolf', 'hidden_username');
+    const other = createMember('member-other', 'Night Hawk', 'other_username');
+    const { guild, search } = createGuild('guild-lazy-fuzzy', [target, other]);
+    const resolver = new MemberResolver();
+    expect((await resolver.resolve(createMessage(guild), ['Thunder', 'Wolf'])).member).toBe(target);
+    const result = await resolver.resolve(createMessage(guild), ['Thundar', 'Wolf']);
+    expect(result.member).toBe(target);
+    expect(result.consumed).toBe(2);
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  test('lazy fuzzy matching preserves ambiguity rather than choosing a close target', async () => {
+    const first = createMember('fuzzy-first', 'Thunder Wolf', 'first_user');
+    const second = createMember('fuzzy-second', 'Thunder Wolf', 'second_user');
+    const { guild } = createGuild('guild-fuzzy-ambiguous', [first, second]);
+    const result = await new MemberResolver().resolve(createMessage(guild), ['Thundar', 'Wolf']);
+    expect(result.member).toBeNull();
+    expect(result.reason).toBe('ambiguous');
+  });
+
   test('resolves a multi-word nickname from the guild index without Discord requests', async () => {
     const target = createMember('member-1', 'Thunder Wolf', 'hidden_username');
     const { guild, search, fetch } = createGuild('guild-1', [target]);

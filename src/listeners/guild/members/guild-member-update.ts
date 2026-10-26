@@ -1,5 +1,5 @@
 import { Events, Listener } from '@sapphire/framework';
-import type { GuildMember } from 'discord.js';
+import type { GuildMember, PartialGuildMember } from 'discord.js';
 
 import { getEmoji } from '../../../config/emojis.js';
 
@@ -7,16 +7,14 @@ const MAX_ROLES_SHOWN = 6;
 const AVATAR_SIZE = 1024;
 const ROLE_CACHE_MAX = 2000;
 const AVATAR_CACHE_MAX = 2000;
-const NICK_CACHE_MAX = 2000;
 
 // Caches to avoid false positives from partial / stale oldMember
 const roleCache = new Map<string, Set<string>>();
 const guildAvatarCache = new Map<string, string | null>();
-const nickCache = new Map<string, string | null>();
 
 const code = (v: string | null | undefined, fallback = '*none*'): string => {
   if (!v) return fallback;
-  const clean = v.replace(/`/g, "'").slice(0, 32);
+  const clean = v.replace(/`/g, "'");
   return `\`${clean}\``;
 };
 
@@ -41,19 +39,18 @@ export const formatNickChange = (
   newDisplay: string
 ): string => {
   const { oldShown, newShown } = resolveNickDisplay(prevNick, currNick, oldDisplay, newDisplay);
-  return `${getEmoji('tag')} ${code(oldShown)} → ${code(newShown)}`;
+  const action = currNick === null ? 'cleared' : prevNick === null ? 'set' : 'changed';
+  return `${getEmoji('tag')} Nickname ${action}: ${code(oldShown)} → ${code(newShown)}`;
 };
 
 export const resolveNickChange = (
-  cachedNick: string | null | undefined,
   oldNick: string | null,
   newNick: string | null,
   oldDisplay: string,
   newDisplay: string
 ): string | null => {
-  const previousNick = cachedNick === undefined ? oldNick : cachedNick;
-  if (previousNick === newNick) return null;
-  return formatNickChange(previousNick, newNick, oldDisplay, newDisplay);
+  if (oldNick === newNick) return null;
+  return formatNickChange(oldNick, newNick, oldDisplay, newDisplay);
 };
 
 const rememberRole = (key: string, roles: Set<string>): void => {
@@ -72,14 +69,6 @@ const rememberGuildAvatar = (key: string, hash: string | null): void => {
   }
 };
 
-const rememberNick = (key: string, nick: string | null): void => {
-  nickCache.set(key, nick);
-  if (nickCache.size > NICK_CACHE_MAX) {
-    const first = nickCache.keys().next().value;
-    if (first) nickCache.delete(first);
-  }
-};
-
 const DEDUP_TTL_MS = 10_000;
 const recentMemberLogs = new Map<string, { body: string; galleryKey: string; at: number }>();
 
@@ -88,7 +77,7 @@ export class GuildMemberUpdateListener extends Listener<typeof Events.GuildMembe
     super(context, { ...options, event: Events.GuildMemberUpdate });
   }
 
-  public async run(oldMember: GuildMember, newMember: GuildMember): Promise<void> {
+  public async run(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember): Promise<void> {
     if (
       oldMember.nickname !== newMember.nickname ||
       oldMember.displayName !== newMember.displayName ||
@@ -128,44 +117,31 @@ export class GuildMemberUpdateListener extends Listener<typeof Events.GuildMembe
   }
 
   private async buildUpdatePayload(
-    oldMember: GuildMember,
+    oldMember: GuildMember | PartialGuildMember,
     newMember: GuildMember
   ): Promise<{ description: string; galleryUrls: string[] }> {
     const lines: string[] = [];
     const galleryUrls: string[] = [];
     const cacheKey = `${newMember.guild.id}:${newMember.id}`;
 
-    // ── Nickname — cache-backed to avoid false "none → X" on first sight ──
-    // WHY display fallback: clearing server nick sets nickname=null but Discord shows
-    // universal nickname (globalName ?? username) via displayName — never show "*none*" or empty.
-    const prevNick = nickCache.get(cacheKey);
-    const currNick = newMember.nickname ?? null;
-    const nickChange = resolveNickChange(
-      prevNick,
-      oldMember.nickname ?? null,
-      currNick,
-      oldMember.displayName,
-      newMember.displayName
-    );
-    if (nickChange) lines.push(nickChange);
-    // Handle displayName fallback only if nick didn't change and we have cached nick
-    if (lines.length === 0 && prevNick !== undefined && oldMember.displayName !== newMember.displayName) {
-      // Only log displayName if昵称 didn't change and it's a real change
-      if (oldMember.nickname === newMember.nickname) {
-        // Check if it's actually globalName change (handled via UserUpdate) — but still log if guild display different
-        // To avoid duplicate with UserUpdate, only log if prevNick is not null (member had nick)
-        // For now, keep simple: log displayName change as nick
-        lines.push(`${getEmoji('tag')} ${code(oldMember.displayName)} → ${code(newMember.displayName)}`);
-      }
+    // The event snapshot owns the before value; a separate cache may miss intervening changes.
+    // A partial member has no trustworthy previous nickname. Global names belong to UserUpdate.
+    if (!newMember.user.bot && !oldMember.partial) {
+      const nickChange = resolveNickChange(
+        oldMember.nickname,
+        newMember.nickname,
+        oldMember.displayName,
+        newMember.displayName
+      );
+      if (nickChange) lines.push(nickChange);
     }
-    rememberNick(cacheKey, currNick);
 
     // ── Server avatar (guild-specific only) — global avatar/banner handled via UserUpdate ──
     const prevGuildAvatar = guildAvatarCache.get(cacheKey);
     const currGuildAvatar = newMember.avatar ?? null;
     const guildAvatarChanged =
       prevGuildAvatar !== undefined ? prevGuildAvatar !== currGuildAvatar : oldMember.avatar !== newMember.avatar;
-    if (guildAvatarChanged) {
+    if (!newMember.user.bot && guildAvatarChanged) {
       const shouldLog = prevGuildAvatar !== undefined;
       if (shouldLog) {
         const beforeUrl = oldMember.displayAvatarURL({ size: AVATAR_SIZE, forceStatic: false, extension: 'png' });
@@ -259,7 +235,7 @@ export class GuildMemberUpdateListener extends Listener<typeof Events.GuildMembe
     return lines;
   }
 
-  private buildTimeoutLine(oldMember: GuildMember, newMember: GuildMember): string | null {
+  private buildTimeoutLine(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember): string | null {
     const before = oldMember.communicationDisabledUntilTimestamp;
     const after = newMember.communicationDisabledUntilTimestamp;
     if (before === after) return null;

@@ -13,8 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   export-and-dispatch:
@@ -29,23 +28,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Export commands.json
-        run: npm run docs:export
-      - name: Create Pull Request if changed
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: 'chore(docs): refresh commands.json from source'
-          title: 'chore(docs): refresh commands.json from source'
-          body: 'Automated sync — `npm run docs:export` updated `site/src/data/commands.json`. This keeps `bolt-docs` in sync without manual copy.'
-          branch: chore/sync-commands-json
-          branch-suffix: timestamp
-          add-paths: site/src/data/commands.json
-          delete-branch: true
+      - name: Verify the committed command registry
+        run: npm run docs:check
       - name: Dispatch to bolt-docs
         if: github.repository == 'gogeta1232/Bolt-OS'
         env:
           GH_TOKEN: ${{ secrets.DOCS_SYNC_TOKEN }}
         run: |
           if [ -z "$GH_TOKEN" ]; then echo "DOCS_SYNC_TOKEN not set — skipping dispatch (bolt-docs will sync via scheduled fetch)"; exit 0; fi
-          gh api repos/gogeta1232/bolt-docs/dispatches -f event_type=bolt-os-commands-updated || echo "dispatch failed — bolt-docs will sync via nightly fetch"
+          gh api repos/gogeta1232/bolt-docs/dispatches -f event_type=bolt-os-commands-updated

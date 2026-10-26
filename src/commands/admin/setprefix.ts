@@ -3,9 +3,9 @@ import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import { MessageFlags, type ChatInputCommandInteraction, type Message } from 'discord.js';
 
 import { createEmbed } from '../../config/theme.js';
+import { replyOrEdit } from '../../lib/respond.js';
 import { getEmoji } from '../../config/emojis.js';
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
-import { BotClient } from '../../lib/bot-client.js';
 
 @ApplyOptions<Command.Options>({
   name: 'setprefix',
@@ -29,25 +29,25 @@ export class SetPrefixCommand extends AdminCommand {
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     await this.ensureAdmin(interaction);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const rawPrefix = interaction.options.getString('prefix', true);
     const sanitized = rawPrefix.trim();
     if (!sanitized.length) {
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [createEmbed({ description: 'Prefix cannot be empty.', type: 'warning' })],
         flags: MessageFlags.Ephemeral
       });
       return;
     }
     if (sanitized.length > 5) {
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [createEmbed({ description: 'Prefix must be 5 characters or fewer.', type: 'warning' })],
         flags: MessageFlags.Ephemeral
       });
       return;
     }
     const updated = await this.container.config.set(interaction.guildId!, { prefix: sanitized });
-    (this.container.client as BotClient).updateGuildPrefix(interaction.guildId!, updated.prefix);
-    await interaction.reply({
+    await replyOrEdit(interaction, {
       embeds: [createEmbed({ description: `Prefix updated to \`${updated.prefix}\``, type: 'success' })],
       flags: MessageFlags.Ephemeral
     });
@@ -74,7 +74,6 @@ export class SetPrefixCommand extends AdminCommand {
       return;
     }
     const updated = await this.container.config.set(message.guild!.id, { prefix: sanitized });
-    (this.container.client as BotClient).updateGuildPrefix(message.guild!.id, updated.prefix);
     await channel.send({
       embeds: [createEmbed({ description: `Prefix updated to ${updated.prefix}`, type: 'success' })]
     });

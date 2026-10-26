@@ -1,8 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
-import { ChatInputCommandInteraction, Guild, Message, Role, TextChannel } from 'discord.js';
+import { MessageFlags, ChatInputCommandInteraction, Guild, Message, Role, TextChannel } from 'discord.js';
 
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
+import { replyOrEdit } from '../../lib/respond.js';
 import { getEmoji } from '../../config/emojis.js';
 import { createSuccessEmbed, createDangerEmbed } from '../../lib/single-line-embed.js';
 
@@ -29,14 +30,15 @@ export class FmodCommand extends AdminCommand {
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     const guild = interaction.guild;
     if (!guild) {
-      await interaction.reply(createDangerEmbed('This command can only be used in a server', true));
+      await replyOrEdit(interaction, createDangerEmbed('This command can only be used in a server', true));
       return;
     }
 
     await this.ensureAdmin(interaction);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const role = interaction.options.getRole('role', true) as Role;
-    const description = await this.applyRole(guild, role.id);
-    await interaction.reply(createSuccessEmbed(description, true));
+    const description = await this.applyRole(guild, role);
+    await replyOrEdit(interaction, createSuccessEmbed(description, true));
   }
 
   public override async messageRun(message: Message, args: Args) {
@@ -56,18 +58,18 @@ export class FmodCommand extends AdminCommand {
       return;
     }
 
-    const description = await this.applyRole(guild, (role as Role).id);
+    const description = await this.applyRole(guild, role);
     await channel.send(createSuccessEmbed(description, false));
   }
 
-  private async applyRole(guild: Guild, roleId: string) {
+  private async applyRole(guild: Guild, role: Role): Promise<string> {
+    const roleId = role.id;
     const config = await this.container.config.fetch(guild.id);
     const roles = new Set(config.modRoleIds ?? []);
     const isAdd = !roles.has(roleId);
     if (isAdd) roles.add(roleId);
     else roles.delete(roleId);
     await this.container.config.set(guild.id, { modRoleIds: [...roles] });
-    const role = await guild.roles.fetch(roleId);
     await this.container.logging.sendAuditLog(
       guild,
       `${isAdd ? getEmoji('embedAdd') : getEmoji('reactionRemove')} Bot mod role ${role?.toString() ?? roleId} ${isAdd ? 'granted' : 'removed'}`

@@ -1,6 +1,6 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command, RegisterBehavior } from '@sapphire/framework';
-import { Message } from 'discord.js';
+import { MessageFlags, Message } from 'discord.js';
 import type { ChatInputCommandInteraction, GuildMember } from 'discord.js';
 
 import { getEmoji } from '../../config/emojis.js';
@@ -36,6 +36,7 @@ export class TimeoutCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guild = interaction.guild;
     if (!guild) {
       await replyGuildOnly(interaction);

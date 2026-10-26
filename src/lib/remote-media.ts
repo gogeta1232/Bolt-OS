@@ -1,5 +1,11 @@
 const ALLOWED_MEDIA_HOSTS = new Set(['cdn.discordapp.com', 'media.discordapp.net']);
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
+const IMAGE_CONTENT_TYPES: Readonly<Record<string, string>> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp'
+};
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const MAX_REDIRECTS = 2;
 
@@ -58,38 +64,43 @@ export const downloadDiscordImage = async (
 ): Promise<DownloadedImage | null> => {
   let currentUrl = parseAllowedUrl(sourceUrl);
   if (!currentUrl) return null;
+  const signal = AbortSignal.timeout(options.timeoutMs);
 
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
     const response = await fetch(currentUrl, {
       redirect: 'manual',
-      signal: AbortSignal.timeout(options.timeoutMs),
+      signal,
       headers: { 'User-Agent': 'Bolt Discord Bot', Accept: 'image/*' }
     }).catch(() => null);
     if (!response) return null;
 
     if (REDIRECT_STATUS_CODES.has(response.status)) {
       const location = response.headers.get('location');
-      await response.body?.cancel();
+      await response.body?.cancel().catch(() => undefined);
       if (!location || redirectCount === MAX_REDIRECTS) return null;
-      currentUrl = parseAllowedUrl(new URL(location, currentUrl).toString());
+      try {
+        currentUrl = parseAllowedUrl(new URL(location, currentUrl).toString());
+      } catch {
+        return null;
+      }
       if (!currentUrl) return null;
       continue;
     }
 
     if (!response.ok) {
-      await response.body?.cancel();
+      await response.body?.cancel().catch(() => undefined);
       return null;
     }
 
     const contentType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
     if (!contentType?.startsWith('image/')) {
-      await response.body?.cancel();
+      await response.body?.cancel().catch(() => undefined);
       return null;
     }
 
-    const data = await readBodyWithLimit(response, options.maxBytes);
+    const data = await readBodyWithLimit(response, options.maxBytes).catch(() => null);
     if (!data) return null;
-    return { data, extension: extensionFromUrl(currentUrl) };
+    return { data, extension: IMAGE_CONTENT_TYPES[contentType] ?? extensionFromUrl(currentUrl) };
   }
 
   return null;

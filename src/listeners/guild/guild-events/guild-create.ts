@@ -31,5 +31,6 @@ export class GuildDeleteListener extends Listener<typeof Events.GuildDelete> {
   public async run(guild: Guild) {
     this.container.memberResolver.invalidateGuild(guild.id);
     this.container.logger.warn({ guildId: guild.id }, 'Removed from guild');
+    if (guild.available) await this.container.greetings.clearGuild(guild.id);
   }
 }

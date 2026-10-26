@@ -1,6 +1,7 @@
 import { ActivityType, GatewayIntentBits, Partials, type PresenceData } from 'discord.js';
 
 import { env } from './env.js';
+import { NO_MENTIONS } from '../lib/mentions.js';
 
 const presence = {
   status: 'online',
@@ -13,6 +14,7 @@ const presence = {
 } satisfies PresenceData;
 
 const clientOptions = {
+  allowedMentions: NO_MENTIONS,
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,

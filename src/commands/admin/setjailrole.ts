@@ -4,6 +4,7 @@ import { Message, MessageFlags, PermissionFlagsBits, Role } from 'discord.js';
 import type { ChatInputCommandInteraction } from 'discord.js';
 
 import { createEmbed } from '../../config/theme.js';
+import { replyOrEdit } from '../../lib/respond.js';
 import { getEmoji } from '../../config/emojis.js';
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
 
@@ -38,12 +39,13 @@ export class SetJailRoleCommand extends AdminCommand {
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     await this.ensureAdmin(interaction);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const subcommand = interaction.options.getSubcommand(true);
 
     if (subcommand === 'role') {
       const role = interaction.options.getRole('role', true) as Role;
       await this.container.config.set(interaction.guildId!, { jailRoleId: role.id });
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [createEmbed({ description: `Jail role updated to ${role.toString()}`, type: 'success' })],
         flags: MessageFlags.Ephemeral
       });
@@ -61,7 +63,7 @@ export class SetJailRoleCommand extends AdminCommand {
         `**Jail Channel:** ${jailChannel ? jailChannel.toString() : 'Not set'}`
       ].join('\n');
 
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [
           createEmbed({
             title: `${getEmoji('settings')} Jail Settings`,

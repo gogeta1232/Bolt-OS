@@ -18,7 +18,7 @@ import { buildModerationContext } from '../../config/logging.js';
 import { v2 } from '../../lib/embeds.js';
 import { buildWarnConfirmationContainer } from '../../lib/warn-views.js';
 import { parseDuration } from '../../lib/utils/duration-parser.js';
-import { replyNoPermission, replyContainer, replyGuildOnly, replyToast } from '../../lib/respond.js';
+import { replyNoPermission, replyContainer, replyGuildOnly, replyToast, replyOrEdit } from '../../lib/respond.js';
 import { hasModerationPermission } from '../../lib/utils/moderation-permission-checker.js';
 import { collectEvidence } from '../../lib/evidence.js';
 
@@ -78,7 +78,10 @@ export class WarnCommand extends Command {
       return;
     }
 
-    // Use optimized permission checker
+    const sub = interaction.options.getSubcommand(true);
+    if (sub !== 'issue') await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // Check current permission before using warnings.
     const hasPermission = await hasModerationPermission(
       guild,
       interaction.member as GuildMember,
@@ -91,7 +94,6 @@ export class WarnCommand extends Command {
       return;
     }
 
-    const sub = interaction.options.getSubcommand(true);
     const target = interaction.options.getMember('target');
 
     if (!(target instanceof GuildMember)) {
@@ -105,7 +107,10 @@ export class WarnCommand extends Command {
         break;
       case 'history': {
         const warnings = await this.container.warnings.list(guild.id, target.id, 25);
-        await interaction.reply({ embeds: [this.buildHistoryEmbed(target, warnings)], flags: MessageFlags.Ephemeral });
+        await replyOrEdit(interaction, {
+          embeds: [this.buildHistoryEmbed(target, warnings)],
+          flags: MessageFlags.Ephemeral
+        });
         break;
       }
       case 'clear': {
@@ -122,7 +127,7 @@ export class WarnCommand extends Command {
           interaction.user.id,
           interaction.user.tag
         );
-        await interaction.reply({ embeds: [resolution.embed], flags: MessageFlags.Ephemeral });
+        await replyOrEdit(interaction, { embeds: [resolution.embed], flags: MessageFlags.Ephemeral });
         break;
       }
       default:
@@ -291,7 +296,7 @@ export class WarnCommand extends Command {
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
             .setCustomId(MODAL_DURATION_ID)
-            .setLabel('Duration (optional, e.g. "3 days" or "12 hours")')
+            .setLabel('Duration (optional, e.g. 3 days)')
             .setStyle(TextInputStyle.Short)
             .setRequired(false)
         )

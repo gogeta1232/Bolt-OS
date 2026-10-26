@@ -39,10 +39,10 @@ export class HelpCommand extends Command {
   public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<void> {
     try {
       const query = interaction.options.getString('command');
-      const prefix = await this.resolveGuildPrefix(interaction.guildId ?? null);
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => undefined);
       }
+      const prefix = await this.resolveGuildPrefix(interaction.guildId ?? null);
       if (query) {
         await this.sendCommandHelp(interaction, prefix, query);
         return;

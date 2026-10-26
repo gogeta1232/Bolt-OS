@@ -3,6 +3,7 @@ import { Command, RegisterBehavior } from '@sapphire/framework';
 import type { ChatInputCommandInteraction, Guild } from 'discord.js';
 import { Message, MessageFlags } from 'discord.js';
 
+import { NO_MENTIONS } from '../../lib/mentions.js';
 import { rich, v2 } from '../../lib/embeds.js';
 
 @ApplyOptions<Command.Options>({
@@ -37,7 +38,7 @@ export class BoostCountCommand extends Command {
     if (!guild) {
       await message.reply({
         embeds: [rich({ description: 'This command can only be used in a server.', kind: 'warning' })],
-        allowedMentions: { repliedUser: false }
+        allowedMentions: NO_MENTIONS
       });
       return;
     }
@@ -52,7 +53,7 @@ export class BoostCountCommand extends Command {
     const isMessage = source instanceof Message;
     const payload = this.buildBoostPayload(guild, boostCount, boostTier, boostProgress, !isMessage);
     if (isMessage) {
-      await source.reply({ ...payload, allowedMentions: { repliedUser: false } } as never);
+      await source.reply({ ...payload, allowedMentions: NO_MENTIONS } as never);
     } else {
       await source.reply(payload as never);
     }

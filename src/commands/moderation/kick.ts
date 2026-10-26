@@ -1,6 +1,6 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
-import { Message } from 'discord.js';
+import { MessageFlags, Message } from 'discord.js';
 import type { ChatInputCommandInteraction, GuildMember } from 'discord.js';
 
 import { getEmoji } from '../../config/emojis.js';
@@ -30,6 +30,7 @@ export class KickCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guild = interaction.guild;
     if (!guild) {
       await replyGuildOnly(interaction);
@@ -131,17 +132,23 @@ export class KickCommand extends Command {
       const moderatorTag = source instanceof Message ? source.author.tag : source.user.tag;
       const moderatorId = source instanceof Message ? source.author.id : source.user.id;
       const description = `${getEmoji('kick')} ${member.user.tag} kicked • Reason: ${reason}`;
-      await replyToast(source, 'success', description);
-      const caseRecord = await this.container.cases.create({
-        guildId: member.guild.id,
-        action: 'kick',
-        targetId: member.id,
-        targetTag: member.user.tag,
-        moderatorId,
-        moderatorTag,
-        reason,
-        evidence
-      });
+      const [caseResult, responseResult] = await Promise.allSettled([
+        this.container.cases.create({
+          guildId: member.guild.id,
+          action: 'kick',
+          targetId: member.id,
+          targetTag: member.user.tag,
+          moderatorId,
+          moderatorTag,
+          reason,
+          evidence
+        }),
+        replyToast(source, 'success', description)
+      ]);
+      // Wait for both before reporting an error, so a late success reply cannot overwrite it.
+      if (caseResult.status === 'rejected') throw caseResult.reason;
+      if (responseResult.status === 'rejected') throw responseResult.reason;
+      const caseRecord = caseResult.value;
       const evidenceSummary = evidence.length ? `\n${getEmoji('evidence')} Evidence: ${evidence.join(', ')}` : '';
       const moderationContext = buildModerationContext({
         actor: source instanceof Message ? source.author : source.user,
@@ -158,15 +165,17 @@ export class KickCommand extends Command {
 
       void (async () => {
         try {
-          await this.container.logging.sendModerationLog(
-            member.guild,
-            `${getEmoji('kick')} Case #${caseRecord.caseId}: ${member.user.toString()} kicked by ${moderatorTag}`,
-            moderationContext
-          );
-          await this.container.logging.sendCaseLog(
-            member.guild,
-            `${getEmoji('case')} Case #${caseRecord.caseId} — ${member.user.toString()} kicked by ${moderatorTag}${evidenceSummary}`
-          );
+          await Promise.all([
+            this.container.logging.sendModerationLog(
+              member.guild,
+              `${getEmoji('kick')} Case #${caseRecord.caseId}: ${member.user.toString()} kicked by ${moderatorTag}`,
+              moderationContext
+            ),
+            this.container.logging.sendCaseLog(
+              member.guild,
+              `${getEmoji('case')} Case #${caseRecord.caseId} — ${member.user.toString()} kicked by ${moderatorTag}${evidenceSummary}`
+            )
+          ]);
         } catch (error) {
           this.container.logger.error({ err: error, guildId: member.guild.id }, 'Failed to dispatch kick logs');
         }

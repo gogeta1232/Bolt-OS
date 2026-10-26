@@ -42,11 +42,11 @@ export class CommandLoggingListener extends Listener {
     this.container.client.off(Events.MessageCommandError, this.messageErrorHandler);
   }
 
-  private async logMessageCommand({ message, command }: MessageCommandSuccessPayload) {
+  private async logMessageCommand({ message, command, duration }: MessageCommandSuccessPayload) {
     // WHY sleek body: who/where/when ride in header pills + footer ID — no raw ids or guild echo.
     // WHY message context: staff audit needs <#channel> + ID + [Jump](https://discord.com/channels/guild/channel/message).
     this.container.logger.info(
-      { command: command.name, userId: message.author.id, guildId: message.guild?.id },
+      { command: command.name, userId: message.author.id, guildId: message.guild?.id, durationMs: duration },
       `prefix command used: ${command.name}`
     );
     if (message.guild) {
@@ -60,9 +60,9 @@ export class CommandLoggingListener extends Listener {
     }
   }
 
-  private async logChatInputCommand({ interaction, command }: ChatInputCommandSuccessPayload) {
+  private async logChatInputCommand({ interaction, command, duration }: ChatInputCommandSuccessPayload) {
     this.container.logger.info(
-      { command: command.name, userId: interaction.user.id, guildId: interaction.guild?.id },
+      { command: command.name, userId: interaction.user.id, guildId: interaction.guild?.id, durationMs: duration },
       `slash command used: ${command.name}`
     );
     if (interaction.guild) {
@@ -76,10 +76,16 @@ export class CommandLoggingListener extends Listener {
     }
   }
 
-  private async logChatInputError(error: unknown, { interaction, command }: ChatInputCommandErrorPayload) {
+  private async logChatInputError(error: unknown, { interaction, command, duration }: ChatInputCommandErrorPayload) {
     const resolved = error instanceof Error ? error : new Error(String(error));
     this.container.logger.error(
-      { err: resolved, command: command?.name, userId: interaction.user.id, guildId: interaction.guild?.id },
+      {
+        err: resolved,
+        command: command?.name,
+        userId: interaction.user.id,
+        guildId: interaction.guild?.id,
+        durationMs: duration
+      },
       'Chat input command error'
     );
     if (interaction.guild) {
@@ -96,10 +102,16 @@ export class CommandLoggingListener extends Listener {
     }
   }
 
-  private async logMessageError(error: unknown, { message, command }: MessageCommandErrorPayload) {
+  private async logMessageError(error: unknown, { message, command, duration }: MessageCommandErrorPayload) {
     const resolved = error instanceof Error ? error : new Error(String(error));
     this.container.logger.error(
-      { err: resolved, command: command?.name, userId: message.author.id, guildId: message.guild?.id },
+      {
+        err: resolved,
+        command: command?.name,
+        userId: message.author.id,
+        guildId: message.guild?.id,
+        durationMs: duration
+      },
       'Message command error'
     );
     if (message.guild) {

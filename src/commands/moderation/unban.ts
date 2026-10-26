@@ -1,6 +1,13 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
-import { Message, type ChatInputCommandInteraction, type Guild, type GuildMember, type User } from 'discord.js';
+import {
+  MessageFlags,
+  Message,
+  type ChatInputCommandInteraction,
+  type Guild,
+  type GuildMember,
+  type User
+} from 'discord.js';
 
 import { getEmoji } from '../../config/emojis.js';
 import { buildModerationContext } from '../../config/logging.js';
@@ -37,6 +44,7 @@ export class UnbanCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guild = interaction.guild;
     if (!guild) {
       await replyGuildOnly(interaction);

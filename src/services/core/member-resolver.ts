@@ -26,7 +26,7 @@ interface FuseEntry {
 interface GuildSearchIndex {
   readonly members: GuildMember[];
   readonly exact: ReadonlyMap<string, readonly GuildMember[]>;
-  readonly fuse: Fuse<FuseEntry>;
+  fuse: Fuse<FuseEntry> | null;
   readonly sourceSize: number;
   readonly expiresAt: number;
 }
@@ -74,17 +74,14 @@ export class MemberResolver {
     if (candidates.length === 0) return this.createNotFoundResult();
 
     const index = this.getOrCreateGuildIndex(guild);
-    const localResult = this.matchCandidates(index.members, candidates, index.exact, index.fuse);
+    const localResult = this.matchCandidates(index, candidates);
     if (localResult) return localResult;
 
     const remoteMembers = await this.searchRemoteMembers(guild, inputTokens);
     if (remoteMembers.length === 0) return this.createNotFoundResult();
 
     const remoteIndex = this.buildSearchIndex(remoteMembers, remoteMembers.length);
-    return (
-      this.matchCandidates(remoteIndex.members, candidates, remoteIndex.exact, remoteIndex.fuse) ??
-      this.createNotFoundResult()
-    );
+    return this.matchCandidates(remoteIndex, candidates) ?? this.createNotFoundResult();
   }
 
   public invalidateGuild(guildId: string): void {
@@ -131,12 +128,8 @@ export class MemberResolver {
     return candidates;
   }
 
-  private matchCandidates(
-    members: readonly GuildMember[],
-    candidates: readonly SearchCandidate[],
-    exactIndex: ReadonlyMap<string, readonly GuildMember[]>,
-    fuse: Fuse<FuseEntry>
-  ): ResolutionResult | null {
+  private matchCandidates(index: GuildSearchIndex, candidates: readonly SearchCandidate[]): ResolutionResult | null {
+    const { members, exact: exactIndex } = index;
     for (const candidate of candidates) {
       const indexed = exactIndex.get(candidate.normalized) ?? [];
       const matches = indexed.filter((member) => this.getMemberTokens(member).has(candidate.normalized));
@@ -159,7 +152,7 @@ export class MemberResolver {
 
     for (const candidate of candidates) {
       if (candidate.normalized.length < MIN_FUZZY_QUERY_LENGTH) continue;
-      const result = this.searchWithFuse(fuse, candidate);
+      const result = this.searchWithFuse(this.getFuzzyIndex(index), candidate);
       if (result) return result;
     }
 
@@ -234,7 +227,6 @@ export class MemberResolver {
 
   private buildSearchIndex(members: GuildMember[], sourceSize: number): GuildSearchIndex {
     const exact = new Map<string, GuildMember[]>();
-    const dataset: FuseEntry[] = [];
 
     for (const member of members) {
       for (const alias of this.getMemberTokens(member)) {
@@ -242,14 +234,26 @@ export class MemberResolver {
         if (matches) matches.push(member);
         else exact.set(alias, [member]);
       }
-      dataset.push({
-        member,
-        username: member.user.username,
-        displayName: member.displayName,
-        globalName: member.user.globalName ?? '',
-        nickname: member.nickname ?? ''
-      });
     }
+
+    return {
+      members,
+      exact,
+      fuse: null,
+      sourceSize,
+      expiresAt: Date.now() + INDEX_TTL_MS
+    };
+  }
+
+  private getFuzzyIndex(index: GuildSearchIndex): Fuse<FuseEntry> {
+    if (index.fuse) return index.fuse;
+    const dataset: FuseEntry[] = index.members.map((member) => ({
+      member,
+      username: member.user.username,
+      displayName: member.displayName,
+      globalName: member.user.globalName ?? '',
+      nickname: member.nickname ?? ''
+    }));
 
     const fuse = new Fuse(dataset, {
       keys: [
@@ -264,13 +268,8 @@ export class MemberResolver {
       includeScore: true
     });
 
-    return {
-      members,
-      exact,
-      fuse,
-      sourceSize,
-      expiresAt: Date.now() + INDEX_TTL_MS
-    };
+    index.fuse = fuse;
+    return fuse;
   }
 
   private async searchRemoteMembers(guild: Guild, tokens: readonly string[]): Promise<GuildMember[]> {

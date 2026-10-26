@@ -2,11 +2,9 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Events, Listener } from '@sapphire/framework';
 import type { Message, PartialMessage } from 'discord.js';
 
-import { getEmoji } from '../../config/emojis.js';
-
 @ApplyOptions<Listener.Options>({ event: Events.MessageReactionRemoveAll })
 export class ReactionRemoveAllListener extends Listener<typeof Events.MessageReactionRemoveAll> {
-  public async run(message: Message | PartialMessage) {
+  public async run(message: Message | PartialMessage): Promise<void> {
     try {
       // Fetch the message if it's partial
       if (message.partial) {
@@ -16,25 +14,18 @@ export class ReactionRemoveAllListener extends Listener<typeof Events.MessageRea
       const guild = message.guild;
       if (!guild) return;
 
-      const description = `${getEmoji('reactionRemove')} All reactions removed from message by ${message.author?.toString() || 'a user'}`;
+      const description = message.author ? `Message by ${message.author}` : 'Message author unavailable';
 
       await this.container.logging.sendReactionLog(guild, description, {
-        actor: message.author ?? null,
-        target: null,
+        activity: 'reactionClear',
+        target: message.author ?? null,
         channel: message.channel,
         message: {
           id: message.id,
           url: message.url,
           content: message.content || null
         },
-        timestamp: Date.now(),
-        showActorAvatar: true,
-        showTargetAvatar: false,
-        emojiIconUrl: null,
-        metadata: {
-          'Reactions Removed': 'All'
-        },
-        hideDetailsSection: true
+        timestamp: Date.now()
       });
     } catch (error) {
       this.container.logger.error({ err: error }, 'Failed to log reaction remove all event');

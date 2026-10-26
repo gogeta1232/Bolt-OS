@@ -1,9 +1,18 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
-import { MessageFlags, type ChatInputCommandInteraction, type Message } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  Message,
+  MessageFlags,
+  type ChatInputCommandInteraction,
+  type EmbedBuilder
+} from 'discord.js';
 
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
 import { createEmbed } from '../../config/theme.js';
+import { replyOrEdit } from '../../lib/respond.js';
 import { getEmoji } from '../../config/emojis.js';
 import type { AutoResponderDocument } from '../../database/models/features/AutoResponder.js';
 
@@ -56,6 +65,7 @@ export class AutoResponderCommand extends AdminCommand {
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     await this.ensureAdmin(interaction);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const subcommand = interaction.options.getSubcommand(true);
     switch (subcommand) {
       case 'add':
@@ -100,7 +110,7 @@ export class AutoResponderCommand extends AdminCommand {
           });
           return;
         }
-        await this.container.autoResponders.add({
+        await this.saveResponder(message, {
           guildId: message.guild!.id,
           trigger,
           response,
@@ -109,13 +119,6 @@ export class AutoResponderCommand extends AdminCommand {
           createdBy: message.author.id,
           createdAt: new Date()
         });
-        await channel.send({
-          embeds: [createEmbed({ description: `Responder added for "${trigger}"`, type: 'success' })]
-        });
-        await this.container.logging.sendAuditLog(
-          message.guild!,
-          `${getEmoji('autoResponder')} Auto responder added: ${trigger}`
-        );
         break;
       }
       case 'remove': {
@@ -154,7 +157,7 @@ export class AutoResponderCommand extends AdminCommand {
     const response = interaction.options.getString('response', true);
     const caseSensitive = interaction.options.getBoolean('case_sensitive') ?? false;
     const useEmbed = interaction.options.getBoolean('use_embed') ?? false;
-    await this.container.autoResponders.add({
+    await this.saveResponder(interaction, {
       guildId: interaction.guildId!,
       trigger,
       response,
@@ -163,20 +166,76 @@ export class AutoResponderCommand extends AdminCommand {
       createdBy: interaction.user.id,
       createdAt: new Date()
     });
-    await interaction.reply({
-      embeds: [createEmbed({ description: `Responder added for "${trigger}"`, type: 'success' })],
-      flags: MessageFlags.Ephemeral
-    });
-    await this.container.logging.sendAuditLog(
-      interaction.guild!,
-      `${getEmoji('autoResponder')} Auto responder added: ${trigger}`
-    );
+  }
+
+  private async saveResponder(
+    source: Message | ChatInputCommandInteraction,
+    entry: AutoResponderDocument
+  ): Promise<void> {
+    const send = async (payload: {
+      embeds: EmbedBuilder[];
+      components?: ActionRowBuilder<ButtonBuilder>[];
+    }): Promise<void> => {
+      if (source instanceof Message) {
+        if ('send' in source.channel) await source.channel.send({ ...payload, allowedMentions: { parse: [] } });
+      } else {
+        await replyOrEdit(source, { ...payload, flags: MessageFlags.Ephemeral });
+      }
+    };
+    const outcome = async (description: string, type: 'success' | 'warning' | 'danger'): Promise<void> => {
+      await send({ embeds: [createEmbed({ description, type })] });
+    };
+    try {
+      const result = await this.container.autoResponders.add(entry);
+      if (result === 'exists') {
+        const pending = await this.container.autoResponders.prepareOverwrite(entry);
+        if (pending === 'same') {
+          await outcome(`A responder already exists for "${entry.trigger}" with the same response.`, 'warning');
+        } else if (pending === 'missing') {
+          await outcome('That responder was removed. Run the add command again.', 'warning');
+        } else if (pending === 'busy') {
+          await outcome('Too many confirmations are pending. Try again shortly.', 'warning');
+        } else {
+          const controls = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`autoresponder:overwrite:${pending.token}`)
+              .setLabel('Overwrite')
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId(`autoresponder:cancel:${pending.token}`)
+              .setLabel('Cancel')
+              .setStyle(ButtonStyle.Secondary)
+          );
+          await send({
+            embeds: [
+              createEmbed({
+                description: `Overwrite the existing response for "${entry.trigger}"?\n\nNew response:\n${entry.response}\n\nConfirm within 2 minutes.`,
+                type: 'warning'
+              })
+            ],
+            components: [controls]
+          });
+        }
+        return;
+      }
+    } catch (error) {
+      this.container.logger.error({ err: error, guildId: entry.guildId }, 'Failed to add autoresponder');
+      await outcome('Could not add the responder. Try again shortly.', 'danger');
+      return;
+    }
+    await outcome(`Responder added for "${entry.trigger}"`, 'success');
+    if (source.guild) {
+      await this.container.logging.sendAuditLog(
+        source.guild,
+        `${getEmoji('autoResponder')} Auto responder added: ${entry.trigger}`
+      );
+    }
   }
 
   private async removeResponder(interaction: ChatInputCommandInteraction) {
     const trigger = interaction.options.getString('trigger', true);
     await this.container.autoResponders.remove(interaction.guildId!, trigger);
-    await interaction.reply({
+    await replyOrEdit(interaction, {
       embeds: [createEmbed({ description: `Responder removed for "${trigger}"`, type: 'success' })],
       flags: MessageFlags.Ephemeral
     });
@@ -189,7 +248,10 @@ export class AutoResponderCommand extends AdminCommand {
   private async listResponders(interaction: ChatInputCommandInteraction) {
     const responders = await this.container.autoResponders.list(interaction.guildId!);
     const description = this.formatResponderList(responders);
-    await interaction.reply({ embeds: [createEmbed({ description, type: 'info' })], flags: MessageFlags.Ephemeral });
+    await replyOrEdit(interaction, {
+      embeds: [createEmbed({ description, type: 'info' })],
+      flags: MessageFlags.Ephemeral
+    });
   }
 
   private formatResponderList(responders: readonly AutoResponderDocument[]): string {

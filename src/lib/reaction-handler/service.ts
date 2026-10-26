@@ -1,8 +1,6 @@
 import { container } from '@sapphire/framework';
 import type { MessageReaction, User } from 'discord.js';
 
-import { getEmoji } from '../../config/emojis.js';
-
 interface ReactionProcessingResult {
   processedBy: string[];
   logged: boolean;
@@ -132,27 +130,21 @@ export class ReactionHandlerService {
       const guild = reaction.message.guild;
       if (!guild) return;
 
-      const description = `${getEmoji(action === 'add' ? 'reactionAdd' : 'reactionRemove')} ${user.toString()} ${action === 'add' ? 'added' : 'removed'} ${reaction.emoji.toString()} ${action === 'add' ? 'to' : 'from'} ${reaction.message.author?.toString() || 'a message'}`;
-
-      const emojiUrl = reaction.emoji.id
-        ? reaction.emoji.imageURL({ extension: reaction.emoji.animated ? 'gif' : 'png' })
-        : null;
+      const author = reaction.message.author;
+      const messageLabel = author ? `${author.toString()}'s message` : 'a message';
+      const description = `${user.toString()} ${action === 'add' ? 'added' : 'removed'} ${reaction.emoji.toString()} ${action === 'add' ? 'to' : 'from'} ${messageLabel}`;
 
       await container.logging.sendReactionLog(guild, description, {
-        actor: null,
-        target: null,
+        activity: action === 'add' ? 'reactionAdd' : 'reactionRemove',
+        actor: user,
+        target: author ?? null,
         channel: reaction.message.channel,
         message: {
           id: reaction.message.id,
           url: reaction.message.url,
           content: reaction.message.content || null
         },
-        timestamp: Date.now(),
-        showActorAvatar: false,
-        showTargetAvatar: false,
-        emojiIconUrl: emojiUrl || undefined,
-        metadata: {},
-        hideDetailsSection: false
+        timestamp: Date.now()
       });
     } catch (error) {
       container.logger.error({ err: error }, `Failed to log ${action} reaction`);

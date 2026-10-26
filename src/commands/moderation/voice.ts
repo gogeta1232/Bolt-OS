@@ -1,6 +1,6 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
-import { type ChatInputCommandInteraction, GuildMember, Message, PermissionFlagsBits } from 'discord.js';
+import { MessageFlags, type ChatInputCommandInteraction, GuildMember, Message, PermissionFlagsBits } from 'discord.js';
 
 import { getEmoji } from '../../config/emojis.js';
 import { buildModerationContext } from '../../config/logging.js';
@@ -70,6 +70,7 @@ export class VoiceCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const action = interaction.options.getSubcommand(true) as VoiceAction;
     const target = interaction.options.getMember('target');
     if (!(target instanceof GuildMember)) {

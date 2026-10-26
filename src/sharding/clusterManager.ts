@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../setup/load-env.js';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ClusterManager, HeartbeatManager, ReClusterManager } from 'discord-hybrid-sharding';

@@ -26,6 +26,7 @@ export class ReadyListener extends Listener<typeof Events.ClientReady> {
     }
 
     container.cases.initialize();
+    container.greetings.initialize();
 
     logger.info({ tag: client.user?.tag, id: client.user?.id }, 'Bot ready');
     await client.user?.setPresence(botConfig.presence);

@@ -1,7 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
-import { type ChatInputCommandInteraction, GuildMember, Message, PermissionFlagsBits } from 'discord.js';
+import { MessageFlags, type ChatInputCommandInteraction, GuildMember, Message, PermissionFlagsBits } from 'discord.js';
 
+import { NO_MENTIONS } from '../../lib/mentions.js';
+import { replyOrEdit } from '../../lib/respond.js';
 import { createEmbed } from '../../config/theme.js';
 import { getEmoji } from '../../config/emojis.js';
 import { buildModerationContext } from '../../config/logging.js';
@@ -32,9 +34,10 @@ export class NickCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guild = interaction.guild;
     if (!guild) {
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [
           createEmbed({
             description: 'This command can only be used in a server.',
@@ -55,7 +58,7 @@ export class NickCommand extends Command {
     );
 
     if (!allowed) {
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [
           createEmbed({
             description: 'You do not have permission to use this command.',
@@ -69,7 +72,7 @@ export class NickCommand extends Command {
 
     const target = interaction.options.getMember('target');
     if (!(target instanceof GuildMember)) {
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [
           createEmbed({
             description: 'Cannot find that member.',
@@ -103,7 +106,7 @@ export class NickCommand extends Command {
             type: 'warning'
           })
         ],
-        allowedMentions: { repliedUser: false }
+        allowedMentions: NO_MENTIONS
       });
       return;
     }
@@ -117,7 +120,7 @@ export class NickCommand extends Command {
             type: 'info'
           })
         ],
-        allowedMentions: { repliedUser: false }
+        allowedMentions: NO_MENTIONS
       });
       return;
     }
@@ -132,7 +135,7 @@ export class NickCommand extends Command {
             type: 'warning'
           })
         ],
-        allowedMentions: { repliedUser: false }
+        allowedMentions: NO_MENTIONS
       });
       return;
     }
@@ -156,14 +159,15 @@ export class NickCommand extends Command {
       if (source instanceof Message) {
         await source.reply({
           embeds: [response],
-          allowedMentions: { repliedUser: false }
+          allowedMentions: NO_MENTIONS
         });
       } else {
-        await source.reply({ embeds: [response], ephemeral: true });
+        await replyOrEdit(source, { embeds: [response], ephemeral: true });
       }
       return;
     }
 
+    const previousNickname = member.nickname;
     try {
       await member.setNickname(nickname, `Nickname updated by ${actor.tag}`);
       const description = nickname
@@ -174,10 +178,10 @@ export class NickCommand extends Command {
       if (source instanceof Message) {
         await source.reply({
           embeds: [embed],
-          allowedMentions: { repliedUser: false }
+          allowedMentions: NO_MENTIONS
         });
       } else {
-        await source.reply({ embeds: [embed], ephemeral: true });
+        await replyOrEdit(source, { embeds: [embed], ephemeral: true });
       }
 
       // Fire-and-forget logging for better performance
@@ -187,7 +191,7 @@ export class NickCommand extends Command {
         reason: nickname ? `Nickname set to ${nickname}` : 'Nickname reset'
       });
       moderationContext.metadata = {
-        'Previous Nickname': member.nickname ?? 'None',
+        'Previous Nickname': previousNickname ?? 'None',
         'New Nickname': nickname ?? 'Cleared'
       };
 
@@ -209,10 +213,10 @@ export class NickCommand extends Command {
       if (source instanceof Message) {
         await source.reply({
           embeds: [embed],
-          allowedMentions: { repliedUser: false }
+          allowedMentions: NO_MENTIONS
         });
       } else {
-        await source.reply({ embeds: [embed], ephemeral: true });
+        await replyOrEdit(source, { embeds: [embed], ephemeral: true });
       }
     }
   }

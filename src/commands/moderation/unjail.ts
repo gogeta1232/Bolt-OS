@@ -1,6 +1,7 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import {
+  MessageFlags,
   Guild,
   GuildMember,
   Message,
@@ -57,6 +58,7 @@ export class UnjailCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guild = interaction.guild;
     if (!guild) {
       await replyGuildOnly(interaction);
@@ -303,15 +305,17 @@ export class UnjailCommand extends Command {
           });
 
           // Send logs
-          await this.container.logging.sendModerationLog(
-            member.guild,
-            `${getEmoji('success')} Case #${caseRecord.caseId}: ${member.user.toString()} unjailed by ${moderatorTag}`,
-            moderationContext
-          );
-          await this.container.logging.sendCaseLog(
-            member.guild,
-            `${getEmoji('case')} Case #${caseRecord.caseId} — ${member.user.toString()} unjailed by ${moderatorTag}`
-          );
+          await Promise.all([
+            this.container.logging.sendModerationLog(
+              member.guild,
+              `${getEmoji('success')} Case #${caseRecord.caseId}: ${member.user.toString()} unjailed by ${moderatorTag}`,
+              moderationContext
+            ),
+            this.container.logging.sendCaseLog(
+              member.guild,
+              `${getEmoji('case')} Case #${caseRecord.caseId} — ${member.user.toString()} unjailed by ${moderatorTag}`
+            )
+          ]);
         } catch (error) {
           this.container.logger.error({ err: error, guildId: member.guild.id }, 'Background unjail operations failed');
         }

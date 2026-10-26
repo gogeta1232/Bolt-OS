@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'node:url';
 
-import { buildExportPayload, parseCommandFile, readDefaultPrefix } from '../../src/scripts/export-commands.js';
+import {
+  buildExportPayload,
+  collectCommands,
+  parseCommandFile,
+  readDefaultPrefix
+} from '../../src/scripts/export-commands.js';
 
 const PING_SOURCE = `
 @ApplyOptions<Command.Options>({
@@ -90,5 +96,19 @@ describe('buildExportPayload', () => {
     expect(payload.source).toBe('src/commands');
     expect(payload.defaultPrefix).toBe('?');
     expect(payload.commands).toHaveLength(1);
+  });
+});
+
+it('documents automatic greeting duration and excludes removed greeting commands', async () => {
+  const { commands } = await collectCommands(fileURLToPath(new URL('../..', import.meta.url)));
+  expect(commands.some((command) => command.name === 'greet' || command.name === 'setwelcome')).toBe(false);
+  const greetConfig = commands.find((command) => command.name === 'setgreetchannel');
+  expect(greetConfig?.supportsPrefix).toBe(true);
+  expect(greetConfig?.supportsSlash).toBe(true);
+  expect(greetConfig?.slashOptions).toContainEqual({
+    name: 'time',
+    description: '1 second to 365 days, e.g. 30s, 5m, 2h or 1d',
+    type: 'String',
+    required: true
   });
 });

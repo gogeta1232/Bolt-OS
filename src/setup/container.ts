@@ -13,6 +13,7 @@ import { muteSchedulerService } from '../services/moderation/mute-scheduler-serv
 import { afkService } from '../services/features/afk-service.js';
 import { autoResponderService } from '../services/features/autoresponder-service.js';
 import { SnipeService } from '../services/features/snipe-service.js';
+import { GreetingService } from '../services/features/greeting-service.js';
 // Lib services
 import { reactionHandlerService } from '../lib/reaction-handler/service.js';
 
@@ -29,6 +30,7 @@ export const configureContainer = (container: Container) => {
   container.muteScheduler = muteSchedulerService;
   container.reactionHandlerService = reactionHandlerService;
   container.snipe = new SnipeService();
+  container.greetings = new GreetingService();
 };
 
 declare module '@sapphire/pieces' {
@@ -45,5 +47,6 @@ declare module '@sapphire/pieces' {
     muteScheduler: typeof muteSchedulerService;
     reactionHandlerService: typeof reactionHandlerService;
     snipe: SnipeService;
+    greetings: GreetingService;
   }
 }

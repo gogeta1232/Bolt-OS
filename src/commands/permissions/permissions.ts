@@ -2,6 +2,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import {
   Message,
+  MessageFlags,
   PermissionFlagsBits,
   type ChatInputCommandInteraction,
   type Guild,
@@ -43,6 +44,7 @@ export class PermissionsCommand extends Command {
       await replyGuildOnly(interaction);
       return;
     }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const requester = interaction.member as GuildMember | null;
     if (!requester) {
       await replyToast(interaction, 'warning', 'Could not identify the command executor.');

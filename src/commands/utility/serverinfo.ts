@@ -12,6 +12,7 @@ import {
 import { createEmbed } from '../../config/theme.js';
 import { getEmoji } from '../../config/emojis.js';
 import { fetchGuildMemberStats, type GuildMemberStats } from '../../lib/guild-member-stats.js';
+import { replyToast } from '../../lib/respond.js';
 
 // ── Named constants ──
 const MILLISECONDS_PER_SECOND = 1000;
@@ -50,9 +51,15 @@ export class ServerInfoCommand extends Command {
       return;
     }
 
-    await interaction.reply({
-      embeds: [await this.buildEmbed(interaction.guild)]
-    });
+    await interaction.deferReply();
+    try {
+      await interaction.editReply({ embeds: [await this.buildEmbed(interaction.guild)] });
+    } catch (error) {
+      this.container.logger.warn({ err: error, guildId: interaction.guild.id }, 'Server information lookup failed');
+      await replyToast(interaction, 'danger', 'Could not load server information. Try again shortly.', {
+        ephemeral: false
+      });
+    }
   }
 
   public override async messageRun(message: Message) {

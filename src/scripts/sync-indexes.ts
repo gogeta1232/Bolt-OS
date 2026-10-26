@@ -1,9 +1,10 @@
-import 'dotenv/config';
+import '../setup/load-env.js';
 
 import mongoose from 'mongoose';
 
 import '../database/models/features/AfkProfile.js';
 import '../database/models/features/AutoResponder.js';
+import '../database/models/features/GreetDeletion.js';
 import '../database/models/guild/ChannelSnapshot.js';
 import '../database/models/guild/GuildConfig.js';
 import '../database/models/moderation/Case.js';
