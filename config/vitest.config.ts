@@ -1,7 +1,9 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
 export default defineConfig({
+  root: fileURLToPath(new URL('..', import.meta.url)),
   // Exercise decorated Sapphire commands using the same standard decorator
   // transform as the production TypeScript build. Native Node cannot run them.
   plugins: [

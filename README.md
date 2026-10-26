@@ -87,6 +87,7 @@ npm run validate      # Run the required quality gates
 
 ```text
 .github/  CI, community guidance and README artwork
+config/   Lint and test configuration
 docs/     Architecture, operations and the generated command registry
 src/      Commands, listeners, interaction handlers and typed services
 tests/    Deterministic regression tests
