@@ -34,7 +34,7 @@ export interface ExportedCommandData {
 const COMMANDS_DIR = 'src/commands';
 const ENV_FILE = 'src/config/env.ts';
 const FALLBACK_PREFIX = '!';
-const DEFAULT_OUT = 'site/src/data/commands.json';
+const DEFAULT_OUT = 'docs/commands.json';
 
 const QUOTED_STRING_PATTERN = /['"]([^'"]+)['"]/g;
 const NAME_PATTERN = /name:\s*['"]([^'"]+)['"]/;
@@ -277,7 +277,9 @@ const run = async (argv: string[]): Promise<void> => {
   console.log(`Exported ${payload.count} commands to ${path.relative(repoRoot, outPath)}`);
 };
 
-void run(process.argv.slice(2)).catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  void run(process.argv.slice(2)).catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

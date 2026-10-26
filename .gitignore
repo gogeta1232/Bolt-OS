@@ -1,7 +1,6 @@
 
 node_modules/
 dist/
-site/dist/
 logs/
 .turbo/
 .nyc_output/
@@ -28,3 +27,7 @@ Thumbs.db
 
 # Claude-specific files
 .claude/
+# Local development artifacts; the docs site has its own repository.
+design-system/
+site/
+work/

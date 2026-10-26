@@ -8,8 +8,7 @@ on:
       - 'src/lib/fake-permissions.ts'
       - 'src/lib/access-overview.ts'
       - 'src/scripts/export-commands.ts'
-      - 'site/src/content/**'
-      - 'site/src/data/commands.json'
+      - 'docs/commands.json'
   workflow_dispatch:
 
 permissions:
