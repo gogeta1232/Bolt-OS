@@ -23,11 +23,14 @@ import { createEmbed, theme } from './theme.js';
 import { getEmoji, type EmojiKey } from './emojis.js';
 
 export type LogContext = {
+  activity?: 'reactionAdd' | 'reactionRemove' | 'reactionClear' | 'voiceJoin' | 'voiceLeave';
   actor?: User | null;
   target?: User | null;
   channel?: { id: Snowflake; name?: string | null } | null;
   message?: {
     id: Snowflake;
+    /** Digest of the visible message state, used only for duplicate delivery suppression. */
+    revision?: string;
     url?: string;
     content?: string | null;
     createdTimestamp?: number;
@@ -363,9 +366,9 @@ export const buildLogEmbed = (type: LogType, description: string, context: LogCo
 // ── V2 sleek minimal logging factory ───────────────────────────────────────
 
 export const logV2Title: Record<LogType, string> = {
-  audit: 'Audit Log',
-  moderation: 'Moderation Action',
-  administrative: 'Administrative Action',
+  audit: 'Audit',
+  moderation: 'Moderation',
+  administrative: 'Admin',
   messageDelete: 'Message Deleted',
   messageEdit: 'Message Edited',
   reaction: 'Reaction Update',
@@ -467,13 +470,13 @@ const resolveLogThumbnailUrl = (context: LogContext): string | null => {
 
 const buildHeaderPills = (type: LogType, context: LogContext): string => {
   const pills: string[] = [];
-  const primary = type === 'reaction' ? (context.actor ?? context.target) : (context.target ?? context.actor);
+  const primary = type === 'reaction' || type === 'voice' ? null : (context.target ?? context.actor);
   if (primary) pills.push(`${primary}`);
-  if (context.channel) pills.push(`<#${context.channel.id}>`);
+  if (primary && context.actor && context.actor.id !== primary.id) pills.push(`by ${context.actor}`);
+  if (context.channel && type !== 'voice') pills.push(`<#${context.channel.id}>`);
   const ts = context.timestamp ?? context.message?.createdTimestamp ?? Date.now();
   const rel = `<t:${Math.floor(ts / 1000)}:R>`;
   pills.push(rel);
-  if (pills.length === 1) return pills[0]!;
   return pills.join(' • ');
 };
 
@@ -487,12 +490,20 @@ export type LogV2Result = {
 
 const resolveMemberUpdateHeader = (description: string): { title: string; emojiKey: EmojiKey; accent: number } => {
   const d = description;
+  const lines = d
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const startsWithMarker = (...markers: string[]): boolean =>
+    lines.some((line) => markers.some((marker) => line.startsWith(marker)));
   // Check both legacy unicode and centralized placeholders (getEmoji returns "<:dotGreen:0>" etc.)
-  const hasAdded = d.includes(getEmoji('dotGreen')) || d.includes('🟢') || d.includes('Added');
-  const hasRemoved = d.includes(getEmoji('dotRed')) || d.includes('🔴') || d.includes('Removed');
-  const hasNick = d.includes(getEmoji('tag')) || d.includes('🏷️');
-  const hasAvatar = d.includes(getEmoji('avatar')) || d.includes('🖼️');
-  const hasBanner = (d.includes(getEmoji('banner')) || d.includes('🎨')) && d.toLowerCase().includes('banner');
+  const hasAdded = startsWithMarker(getEmoji('dotGreen'), '🟢', 'Added ');
+  const hasRemoved = startsWithMarker(getEmoji('dotRed'), '🔴', 'Removed ');
+  const hasNick = startsWithMarker(getEmoji('tag'), '🏷️');
+  const hasUsername = startsWithMarker(`${getEmoji('user')} Username:`);
+  const hasDisplayName = startsWithMarker(`${getEmoji('globe')} Display name`);
+  const hasAvatar = startsWithMarker(getEmoji('avatar'), '🖼️');
+  const hasBanner = startsWithMarker(getEmoji('banner'), '🎨') && d.toLowerCase().includes('banner');
   const hasAvatarServer = d.includes('Server Avatar');
   const hasTimeout = d.includes(getEmoji('timeoutIcon')) || d.includes('⛔');
   const hasBoost = d.includes(getEmoji('boost')) || d.includes('💎');
@@ -503,6 +514,8 @@ const resolveMemberUpdateHeader = (description: string): { title: string; emojiK
     if (hasAdded && !hasRemoved) return { title: 'Role Added', emojiKey: 'role', accent: theme.colors.success };
     if (hasRemoved && !hasAdded) return { title: 'Role Removed', emojiKey: 'role', accent: theme.colors.danger };
     if (hasNick) return { title: 'Nickname Changed', emojiKey: 'member', accent: theme.colors.info };
+    if (hasUsername) return { title: 'Username Changed', emojiKey: 'member', accent: theme.colors.info };
+    if (hasDisplayName) return { title: 'Display Name Changed', emojiKey: 'member', accent: theme.colors.info };
     if (hasAvatar && !hasNick) return { title: 'Avatar Updated', emojiKey: 'member', accent: theme.colors.primary };
     if (hasBanner) return { title: 'Banner Updated', emojiKey: 'member', accent: theme.colors.primary };
     if (hasTimeout) return { title: 'Timeout Updated', emojiKey: 'member', accent: theme.colors.danger };
@@ -512,6 +525,8 @@ const resolveMemberUpdateHeader = (description: string): { title: string; emojiK
   const categoryCount = [
     hasAdded || hasRemoved,
     hasNick,
+    hasUsername,
+    hasDisplayName,
     hasAvatar || hasAvatarServer || hasBanner,
     hasTimeout,
     hasBoost
@@ -548,44 +563,37 @@ const resolveV2AccentColor = (type: LogType, description: string, context: LogCo
 
 const THUMBNAIL_ENABLED_TYPES = new Set<LogType>(['emoji', 'guild', 'memberJoin', 'memberLeave', 'memberUpdate']);
 
+const activityHeaders: Record<
+  NonNullable<LogContext['activity']>,
+  { type: LogType; title: string; emojiKey: EmojiKey }
+> = {
+  reactionAdd: { type: 'reaction', title: 'Reaction added', emojiKey: 'reactionAdd' },
+  reactionRemove: { type: 'reaction', title: 'Reaction removed', emojiKey: 'reactionRemove' },
+  reactionClear: { type: 'reaction', title: 'Reactions cleared', emojiKey: 'reactionRemove' },
+  voiceJoin: { type: 'voice', title: 'Joined voice', emojiKey: 'voiceJoin' },
+  voiceLeave: { type: 'voice', title: 'Left voice', emojiKey: 'voiceLeave' }
+};
+
+const resolveV2Header = (
+  type: LogType,
+  description: string,
+  context: LogContext
+): { title: string; emojiKey: EmojiKey } => {
+  const activity = context.activity ? activityHeaders[context.activity] : null;
+  if (activity?.type === type) return activity;
+  if (type === 'memberUpdate') return resolveMemberUpdateHeader(description);
+  return { title: logV2Title[type], emojiKey: logV2EmojiKey[type] };
+};
+
 const appendV2HeaderSection = (
   container: ContainerBuilder,
   type: LogType,
   context: LogContext,
-  description?: string
+  description: string
 ): void => {
-  // Compact, creative memberUpdate header — single line, dynamic title/emoji/accent
-  if (type === 'memberUpdate' && description !== undefined) {
-    const { title, emojiKey } = resolveMemberUpdateHeader(description);
-    const emoji = getEmoji(emojiKey as EmojiKey) ?? getEmoji('member') ?? '';
-    const pillsLine = buildHeaderPills(type, context);
-    // Single-line header saves a whole row vs `## Title\n-# pills` — much smaller
-    const headerText = `${emoji} **${title}** • ${pillsLine}`;
-    const thumbnailUrl = resolveLogThumbnailUrl(context);
-    if (thumbnailUrl) {
-      container.addSectionComponents(
-        new SectionBuilder()
-          .addTextDisplayComponents(new TextDisplayBuilder().setContent(headerText))
-          .setThumbnailAccessory(new ThumbnailBuilder().setURL(thumbnailUrl).setDescription(title))
-      );
-      return;
-    }
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(headerText));
-    return;
-  }
-
-  const emojiKey = logV2EmojiKey[type] ?? 'info';
-  const emoji = getEmoji(emojiKey as EmojiKey) ?? '';
-  const title = logV2Title[type] ?? 'Log';
-  let thumbnailUrl = THUMBNAIL_ENABLED_TYPES.has(type) ? resolveLogThumbnailUrl(context) : null;
-
-  // Custom nitro emojis: show image thumb even for reaction logs (unicode → no thumb, custom → thumb)
-  if (!thumbnailUrl && type === 'reaction' && context.emojiIconUrl) {
-    thumbnailUrl = context.emojiIconUrl;
-  }
-
-  const pillsLine = buildHeaderPills(type, context);
-  const headerText = `## ${emoji} ${title}\n-# ${pillsLine}`;
+  const { title, emojiKey } = resolveV2Header(type, description, context);
+  const thumbnailUrl = THUMBNAIL_ENABLED_TYPES.has(type) ? resolveLogThumbnailUrl(context) : null;
+  const headerText = `-# ${getEmoji(emojiKey)} ${title} • ${buildHeaderPills(type, context)}`;
 
   if (thumbnailUrl) {
     container.addSectionComponents(
@@ -601,10 +609,10 @@ const appendV2HeaderSection = (
 
 const sanitizeInlineValue = (value: string): string => value.slice(0, LOG_V2_INLINE_VALUE_MAX).replace(/`/g, "'");
 
-const buildV2InlineParts = (context: LogContext): string[] => {
+const buildV2InlineParts = (context: LogContext, type: LogType): string[] => {
   const inlineParts: string[] = [];
   if (context.reason) inlineParts.push(`**Reason:** ${sanitizeInlineValue(context.reason)}`);
-  if (context.duration) inlineParts.push(`**Duration:** ${sanitizeInlineValue(context.duration)}`);
+  if (context.duration && type !== 'voice') inlineParts.push(`**Duration:** ${sanitizeInlineValue(context.duration)}`);
   if (context.caseId) inlineParts.push(`**Case:** #${context.caseId}`);
   if (!context.metadata) return inlineParts;
   for (const [key, value] of Object.entries(context.metadata)) {
@@ -675,8 +683,9 @@ const appendV2InlineSection = (
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(inlineCombined));
 };
 
-const buildV2FooterParts = (context: LogContext, cleaned: string): string[] => {
+const buildV2FooterParts = (context: LogContext, cleaned: string, type: LogType): string[] => {
   const footerParts: string[] = [];
+  if (type === 'voice' && context.duration) footerParts.push(`Duration ${sanitizeInlineValue(context.duration)}`);
   const primaryId = context.message?.id ?? context.subjectId ?? context.target?.id ?? context.actor?.id ?? null;
   if (primaryId) footerParts.push(`ID \`${primaryId}\``);
   if (context.message?.url && !cleaned.includes(context.message.url)) {
@@ -767,16 +776,11 @@ const patchV2ContainerForTests = (container: ContainerBuilder): void => {
  */
 export const buildLogV2Container = (type: LogType, description: string, context: LogContext = {}): LogV2Result => {
   // De-duplicate identical lines (fixes "Avatar updated" appearing 2-3 times if listeners fire twice)
-  const dedupedDescription = deduplicateDescription(description);
+  const dedupedDescription = type === 'messageEdit' ? description : deduplicateDescription(description);
   const accentColor = resolveV2AccentColor(type, dedupedDescription, context);
   const container = new ContainerBuilder().setAccentColor(accentColor);
 
   appendV2HeaderSection(container, type, context, dedupedDescription);
-
-  const isMemberUpdate = type === 'memberUpdate';
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(isMemberUpdate ? false : true)
-  );
 
   const { cleaned, hasContent } = appendV2ContentSection(container, dedupedDescription, type, context.galleryUrls);
 
@@ -784,12 +788,12 @@ export const buildLogV2Container = (type: LogType, description: string, context:
   // images next to the text that describes them, before the inline/footer clutter.
   appendV2GallerySection(container, context.galleryUrls, type);
 
-  const inlineParts = buildV2InlineParts(context);
+  const inlineParts = buildV2InlineParts(context, type);
   const fieldsLine = buildV2FieldsLine(context);
   const inlineCombined = combineV2InlineContent(inlineParts, fieldsLine);
   appendV2InlineSection(container, inlineCombined, cleaned, hasContent);
 
-  const footerParts = buildV2FooterParts(context, cleaned);
+  const footerParts = buildV2FooterParts(context, cleaned, type);
   appendV2FooterSection(container, footerParts);
 
   appendV2FilesSection(container, context.files);

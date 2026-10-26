@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-13T13:03:11.137Z",
+  "generatedAt": "2026-10-26T06:18:35.630Z",
   "source": "src/commands",
-  "count": 44,
+  "count": 42,
   "defaultPrefix": "!",
   "commands": [
     {
@@ -78,7 +78,7 @@
       "adminOnly": true,
       "supportsSlash": true,
       "supportsPrefix": true,
-      "prefixUsage": "!setgreetchannel <add|remove|list|message> <channels> <template>",
+      "prefixUsage": "!setgreetchannel <add|remove|list|message|duration> <channels> <template> <time>",
       "slashOptions": [
         {
           "name": "channels",
@@ -89,6 +89,12 @@
         {
           "name": "template",
           "description": "Message template (use {{user}} for user mention)",
+          "type": "String",
+          "required": true
+        },
+        {
+          "name": "time",
+          "description": "1 second to 365 days, e.g. 30s, 5m, 2h or 1d",
           "type": "String",
           "required": true
         }
@@ -189,34 +195,6 @@
         "SendMessages"
       ],
       "file": "src/commands/admin/setup.ts"
-    },
-    {
-      "name": "setwelcome",
-      "description": "Configure welcome channel and message.",
-      "module": "admin",
-      "aliases": [],
-      "adminOnly": true,
-      "supportsSlash": true,
-      "supportsPrefix": true,
-      "prefixUsage": "!setwelcome <channel> <message>",
-      "slashOptions": [
-        {
-          "name": "channel",
-          "description": "Welcome channel",
-          "type": "Channel",
-          "required": true
-        },
-        {
-          "name": "message",
-          "description": "Welcome message template",
-          "type": "String",
-          "required": true
-        }
-      ],
-      "requiredClientPermissions": [
-        "SendMessages"
-      ],
-      "file": "src/commands/admin/setwelcome.ts"
     },
     {
       "name": "ban",
@@ -1009,32 +987,6 @@
         "EmbedLinks"
       ],
       "file": "src/commands/utility/editsnipe.ts"
-    },
-    {
-      "name": "greet",
-      "description": "Ping a member in the greet channel to welcome them.",
-      "module": "utility",
-      "aliases": [],
-      "adminOnly": false,
-      "supportsSlash": true,
-      "supportsPrefix": true,
-      "prefixUsage": "!greet <member> [message]",
-      "slashOptions": [
-        {
-          "name": "member",
-          "description": "Member to greet",
-          "type": "User",
-          "required": true
-        },
-        {
-          "name": "message",
-          "description": "Custom greeting message",
-          "type": "String",
-          "required": false
-        }
-      ],
-      "requiredClientPermissions": [],
-      "file": "src/commands/utility/greet.ts"
     },
     {
       "name": "help",

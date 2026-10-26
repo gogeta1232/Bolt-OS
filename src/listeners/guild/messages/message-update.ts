@@ -1,89 +1,106 @@
 import { Events, Listener } from '@sapphire/framework';
 import { AttachmentBuilder, type Message, type PartialMessage } from 'discord.js';
 
-import { getEmoji } from '../../../config/emojis.js';
+import { isOwnMessage, messageLogChanges } from '../../../lib/message-log.js';
 import {
   fetchPartialMessage,
-  formatContentPreview,
-  embedsAreDifferent,
-  formatEmbedChanges
+  formatMessageEditSnapshot,
+  formatEmbedChanges,
+  formatEmbedEditTranscript
 } from '../../../lib/utils/message-helpers.js';
+
+const EDIT_PREVIEW_MAX = 1200;
+const quoteBody = (body: string): string =>
+  body
+    .split('\n')
+    .map((line) => `> ${line}`)
+    .join('\n');
+const previewBody = (body: string): string => {
+  const quoted = quoteBody(body);
+  return quoted.length > EDIT_PREVIEW_MAX ? `${quoted.slice(0, EDIT_PREVIEW_MAX - 1)}…` : quoted;
+};
 
 export class MessageUpdateListener extends Listener<typeof Events.MessageUpdate> {
   public constructor(context: Listener.Context, options: Listener.Options) {
     super(context, { ...options, event: Events.MessageUpdate });
   }
 
-  public async run(oldMessage: Message | PartialMessage, newMessage: Message | PartialMessage) {
-    if (!newMessage.guild) return;
+  public async run(oldMessage: Message | PartialMessage, newMessage: Message | PartialMessage): Promise<void> {
+    if (!newMessage.guild || isOwnMessage(newMessage, this.container.client.user?.id)) return;
 
-    // Fetch partials
-    const oldFull = await fetchPartialMessage(oldMessage);
+    // Fetching an old partial returns the current message, not its previous body.
+    if (oldMessage.partial) return;
+    const oldFull = oldMessage;
     const newFull = await fetchPartialMessage(newMessage);
 
-    if (!oldFull || !newFull) return;
+    if (!newFull || isOwnMessage(newFull, this.container.client.user?.id)) return;
 
     // Check what changed
-    const contentChanged = oldFull.content !== newFull.content;
-    const embedsChanged = embedsAreDifferent(oldFull.embeds, newFull.embeds);
-    const attachmentsChanged = oldFull.attachments.size !== newFull.attachments.size;
-    const stickersChanged = oldFull.stickers.size !== newFull.stickers.size;
+    const changes = messageLogChanges(oldFull, newFull);
+    const {
+      content: contentChanged,
+      embeds: embedsChanged,
+      attachments: attachmentsChanged,
+      stickers: stickersChanged,
+      components: componentsChanged
+    } = changes;
 
-    if (!contentChanged && !embedsChanged && !attachmentsChanged && !stickersChanged) return;
+    if (!contentChanged && !embedsChanged && !attachmentsChanged && !stickersChanged && !componentsChanged) return;
+    // Discord can generate link previews without the member editing their message.
+    if (
+      !newFull.author.bot &&
+      !contentChanged &&
+      !attachmentsChanged &&
+      !stickersChanged &&
+      !componentsChanged &&
+      oldFull.editedTimestamp === newFull.editedTimestamp
+    )
+      return;
 
     // Store edited message in snipe service
     if (!newFull.author.bot && contentChanged) {
       this.container.snipe.storeEditedMessage(oldFull, newFull);
     }
 
-    // Build log description
-    const lines = [
-      `### ${getEmoji('message')} Message Edited`,
-      `> **Author:** ${newFull.author} (\`${newFull.author.tag}\`)`,
-      `> **Channel:** <#${newFull.channel.id}>`,
-      `> **[Jump to Message](${newFull.url})**`,
-      `> **Edited:** <t:${Math.floor((newFull.editedTimestamp ?? Date.now()) / 1000)}:R>`
-    ];
+    // The shared formatter owns author, channel, time and message link.
+    const lines: string[] = [];
 
-    // Show content changes
-    if (contentChanged) {
-      lines.push(
-        ``,
-        `**Before:**`,
-        formatContentPreview(oldFull.content, 500),
-        ``,
-        `**After:**`,
-        formatContentPreview(newFull.content, 500)
-      );
+    const showSnapshots = contentChanged || componentsChanged || attachmentsChanged || stickersChanged;
+    const beforeBody = formatMessageEditSnapshot(oldFull);
+    const afterBody = formatMessageEditSnapshot(newFull);
+    // Include the actual embed/component body when a bot replaces its loading text.
+    if (showSnapshots && beforeBody !== afterBody) {
+      lines.push(``, `**Before:**`, previewBody(beforeBody), ``, `**After:**`, previewBody(afterBody));
+    } else if (componentsChanged) {
+      lines.push('Controls or media settings updated.');
     }
     // Show embed changes
-    if (embedsChanged) {
-      lines.push(``, `**Embed Changes:**`);
+    if (embedsChanged && !showSnapshots) {
+      lines.push(``);
       lines.push(...formatEmbedChanges(oldFull.embeds, newFull.embeds));
     }
-
-    // Show attachment changes
-    if (attachmentsChanged) {
-      lines.push(``, `**Attachments:**`, `> ${oldFull.attachments.size} → ${newFull.attachments.size}`);
-    }
-
-    // Show sticker changes
-    if (stickersChanged) {
-      lines.push(``, `**Stickers:**`, `> ${oldFull.stickers.size} → ${newFull.stickers.size}`);
-    }
+    if (lines.length === 0) return;
 
     if (newFull.guild) {
       // Long edit? Keep full before/after as an in-card transcript file.
       const files = [];
-      if (contentChanged) {
-        const transcript = `BEFORE:\n${oldFull.content}\n\nAFTER:\n${newFull.content}`;
-        if (transcript.length > 2000) {
+      if (showSnapshots) {
+        const transcript = `BEFORE:\n${beforeBody}\n\nAFTER:\n${afterBody}`;
+        if (quoteBody(beforeBody).length > EDIT_PREVIEW_MAX || quoteBody(afterBody).length > EDIT_PREVIEW_MAX) {
           files.push(new AttachmentBuilder(Buffer.from(transcript, 'utf-8'), { name: `edited-${newFull.id}.txt` }));
+        }
+      }
+      if (embedsChanged && !showSnapshots) {
+        const transcript = formatEmbedEditTranscript(oldFull.embeds, newFull.embeds);
+        if (transcript) {
+          files.push(new AttachmentBuilder(Buffer.from(transcript, 'utf-8'), { name: `embeds-${newFull.id}.txt` }));
         }
       }
       await this.container.logging.sendMessageEditLog(newFull.guild, lines.join('\n'), {
         target: newFull.author,
-        timestamp: Date.now(),
+        channel: { id: newFull.channelId },
+        message: { id: newFull.id, url: newFull.url, revision: changes.revision },
+        timestamp: newFull.editedTimestamp ?? Date.now(),
         showTitle: false,
         showTimestamp: false,
         showTargetAvatar: true,

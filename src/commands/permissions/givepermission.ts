@@ -6,11 +6,13 @@ import {
   type GuildMember,
   type Message,
   type Role,
-  TextChannel
+  TextChannel,
+  MessageFlags
 } from 'discord.js';
 
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
 import { BotClient } from '../../lib/bot-client.js';
+import { replyOrEdit } from '../../lib/respond.js';
 import { getEmoji } from '../../config/emojis.js';
 import { createDangerEmbed, createSuccessEmbed } from '../../lib/single-line-embed.js';
 import {
@@ -103,10 +105,11 @@ export class GivePermissionCommand extends AdminCommand {
   public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<void> {
     const guild = interaction.guild;
     if (!guild) {
-      await interaction.reply(createDangerEmbed('This command can only be used in a server', true));
+      await replyOrEdit(interaction, createDangerEmbed('This command can only be used in a server', true));
       return;
     }
     await this.ensureAdmin(interaction);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const sub = interaction.options.getSubcommand(true) as Subcommand;
     const executor = interaction.member as GuildMember | null;
     switch (sub) {
@@ -114,38 +117,47 @@ export class GivePermissionCommand extends AdminCommand {
         const role = interaction.options.getRole('role', true) as Role;
         const permsRaw = interaction.options.getString('permissions', true);
         if (this.containsAdminPerm(permsRaw) && !this.isOwner(guild, executor)) {
-          await interaction.reply(createDangerEmbed('Only the server owner can grant fake Administrator.', true));
+          await replyOrEdit(
+            interaction,
+            createDangerEmbed('Only the server owner can grant fake Administrator.', true)
+          );
           return;
         }
         const description = await this.addPermissions(guild, role.id, permsRaw);
-        await interaction.reply(createSuccessEmbed(description, true));
+        await replyOrEdit(interaction, createSuccessEmbed(description, true));
         break;
       }
       case 'remove': {
         const role = interaction.options.getRole('role', true) as Role;
         const permsRaw = interaction.options.getString('permissions', true);
         if (this.containsAdminPerm(permsRaw) && !this.isOwner(guild, executor)) {
-          await interaction.reply(createDangerEmbed('Only the server owner can revoke fake Administrator.', true));
+          await replyOrEdit(
+            interaction,
+            createDangerEmbed('Only the server owner can revoke fake Administrator.', true)
+          );
           return;
         }
         const description = await this.removePermissions(guild, role.id, permsRaw);
-        await interaction.reply(createSuccessEmbed(description, true));
+        await replyOrEdit(interaction, createSuccessEmbed(description, true));
         break;
       }
       case 'list': {
         const role = interaction.options.getRole('role') as Role | null;
         const description = await this.listPermissions(guild, role?.id ?? null);
-        await interaction.reply(createSuccessEmbed(description, true));
+        await replyOrEdit(interaction, createSuccessEmbed(description, true));
         break;
       }
       case 'clear': {
         const role = interaction.options.getRole('role', true) as Role;
         if ((await this.roleHasFakeAdmin(guild.id, role.id)) && !this.isOwner(guild, executor)) {
-          await interaction.reply(createDangerEmbed('Only the server owner can clear fake Administrator.', true));
+          await replyOrEdit(
+            interaction,
+            createDangerEmbed('Only the server owner can clear fake Administrator.', true)
+          );
           return;
         }
         const description = await this.clearPermissions(guild, role.id);
-        await interaction.reply(createSuccessEmbed(description, true));
+        await replyOrEdit(interaction, createSuccessEmbed(description, true));
         break;
       }
       case 'show': {
@@ -154,16 +166,16 @@ export class GivePermissionCommand extends AdminCommand {
           (interaction.options.getMember('member') as GuildMember | null) ??
           (await guild.members.fetch(user.id).catch(() => null));
         if (!member) {
-          await interaction.reply(createDangerEmbed('Could not find that member in this server.', true));
+          await replyOrEdit(interaction, createDangerEmbed('Could not find that member in this server.', true));
           return;
         }
         const description = await this.showMemberPermissions(guild, member);
-        await interaction.reply(createSuccessEmbed(description, true));
+        await replyOrEdit(interaction, createSuccessEmbed(description, true));
         break;
       }
       case 'guide': {
         const description = this.buildGuideDescription(await this.resolveGuildPrefix(guild.id));
-        await interaction.reply(createSuccessEmbed(description, true));
+        await replyOrEdit(interaction, createSuccessEmbed(description, true));
         break;
       }
     }

@@ -21,16 +21,24 @@ class ConfigService {
   private readonly cache = new Map<string, { expiresAt: number; value: GuildConfigDocument }>();
   private readonly inFlight = new Map<string, Promise<GuildConfigDocument>>();
 
-  public async fetch(guildId: string): Promise<GuildConfigDocument> {
+  public getCached(guildId: string): GuildConfigDocument | null {
     const cached = this.cache.get(guildId);
-    if (cached?.expiresAt && cached.expiresAt > Date.now()) {
-      return cached.value;
-    }
+    return cached && cached.expiresAt > Date.now() ? cached.value : null;
+  }
+
+  public async fetch(guildId: string): Promise<GuildConfigDocument> {
+    const cached = this.getCached(guildId);
+    if (cached) return cached;
 
     const pending = this.inFlight.get(guildId);
     if (pending) return pending;
 
-    const fetchPromise = this.fetchFromDatabase(guildId).finally(() => this.inFlight.delete(guildId));
+    const fetchPromise: Promise<GuildConfigDocument> = this.fetchFromDatabase(
+      guildId,
+      (): boolean => this.inFlight.get(guildId) === fetchPromise
+    ).finally(() => {
+      if (this.inFlight.get(guildId) === fetchPromise) this.inFlight.delete(guildId);
+    });
     this.inFlight.set(guildId, fetchPromise);
     return fetchPromise;
   }
@@ -53,15 +61,17 @@ class ConfigService {
       .exec();
 
     const normalized = this.normalize(updated, guildId);
+    this.inFlight.delete(guildId);
     this.remember(guildId, normalized);
     return normalized;
   }
 
   public deleteFromCache(guildId: string): void {
     this.cache.delete(guildId);
+    this.inFlight.delete(guildId);
   }
 
-  private async fetchFromDatabase(guildId: string): Promise<GuildConfigDocument> {
+  private async fetchFromDatabase(guildId: string, shouldRemember: () => boolean): Promise<GuildConfigDocument> {
     try {
       const config = await GuildConfigModel.findOneAndUpdate(
         { guildId },
@@ -71,7 +81,7 @@ class ConfigService {
         .lean()
         .exec();
       const normalized = this.normalize(config, guildId);
-      this.remember(guildId, normalized);
+      if (shouldRemember()) this.remember(guildId, normalized);
       return normalized;
     } catch (error) {
       const stale = this.cache.get(guildId)?.value;

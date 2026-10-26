@@ -1,6 +1,7 @@
 import {
   Message,
   MessageFlags,
+  MessageFlagsBitField,
   type ChatInputCommandInteraction,
   type ContainerBuilder,
   type InteractionEditReplyOptions,
@@ -10,8 +11,36 @@ import {
 } from 'discord.js';
 
 import { toast, type ToastKind } from './single-line-embed.js';
+import { NO_MENTIONS } from './mentions.js';
 
 export type ReplySource = ChatInputCommandInteraction | Message | ModalSubmitInteraction;
+
+/** Complete the original deferred reply without leaving a loading response behind. */
+export async function replyOrEdit(
+  source: ChatInputCommandInteraction | ModalSubmitInteraction,
+  payload: Omit<InteractionReplyOptions, 'flags'> & { flags?: number }
+): Promise<void> {
+  const safePayload = { ...payload, allowedMentions: NO_MENTIONS };
+  if (source.deferred && !source.replied) {
+    const flags = new MessageFlagsBitField(payload.flags);
+    const ephemeral = payload.ephemeral ?? flags.has(MessageFlags.Ephemeral);
+    // Visibility cannot change when editing a deferred response. Keep private
+    // errors private when an otherwise public command has been deferred.
+    if (source.ephemeral !== null && source.ephemeral !== ephemeral) {
+      await source.followUp(safePayload);
+      await source.deleteReply();
+      return;
+    }
+    const editableFlags: (MessageFlags.IsComponentsV2 | MessageFlags.SuppressEmbeds)[] = [];
+    if (flags.has(MessageFlags.IsComponentsV2)) editableFlags.push(MessageFlags.IsComponentsV2);
+    if (flags.has(MessageFlags.SuppressEmbeds)) editableFlags.push(MessageFlags.SuppressEmbeds);
+    await source.editReply({ ...safePayload, flags: editableFlags });
+  } else if (source.replied) {
+    await source.followUp(safePayload);
+  } else {
+    await source.reply(safePayload);
+  }
+}
 
 /**
  * One-line outcome reply for moderation commands ("@user banned • Reason: x").
@@ -28,18 +57,13 @@ export async function replyToast(
 
   if (source instanceof Message) {
     const payload = toast(kind, message);
-    await source.reply({ ...payload, allowedMentions: { repliedUser: false } });
+    await source.reply({ ...payload, allowedMentions: NO_MENTIONS });
     return;
   }
 
   const payload = ephemeral ? toast(kind, message, true) : toast(kind, message);
 
-  if ('deferred' in source && (source.deferred || source.replied)) {
-    await source.followUp(payload);
-    return;
-  }
-
-  await source.reply(payload);
+  await replyOrEdit(source, payload);
 }
 
 /**
@@ -57,7 +81,7 @@ export async function replyContainer(
     const payload = {
       components: [container],
       flags: MessageFlags.IsComponentsV2,
-      allowedMentions: { parse: [], repliedUser: false }
+      allowedMentions: NO_MENTIONS
     } satisfies MessageReplyOptions;
     await source.reply(payload);
     return;
@@ -67,7 +91,7 @@ export async function replyContainer(
     const payload = {
       components: [container],
       flags: MessageFlags.IsComponentsV2,
-      allowedMentions: { parse: [], repliedUser: false }
+      allowedMentions: NO_MENTIONS
     } satisfies InteractionEditReplyOptions;
     await source.editReply(payload);
     return;
@@ -76,7 +100,7 @@ export async function replyContainer(
   const payload = {
     components: [container],
     flags: ephemeral ? MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral : MessageFlags.IsComponentsV2,
-    allowedMentions: { parse: [], repliedUser: false }
+    allowedMentions: NO_MENTIONS
   } satisfies InteractionReplyOptions;
 
   if (source.replied) {

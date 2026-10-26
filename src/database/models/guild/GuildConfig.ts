@@ -1,5 +1,7 @@
 import { Schema, model } from 'mongoose';
 
+import { DEFAULT_GREET_DURATION_MS, MAX_GREET_DURATION_MS, MIN_GREET_DURATION_MS } from '../../../lib/greeting.js';
+
 export interface GuildConfigDocument {
   guildId: string;
   prefix: string;
@@ -17,10 +19,6 @@ export interface GuildConfigDocument {
     voice?: string;
     invites?: string;
   };
-  welcome?: {
-    channelId: string;
-    message: string;
-  };
   adminRoleIds: string[];
   /** Bot-side moderator keys: moderation commands only, never admin surface, never grants. */
   modRoleIds: string[];
@@ -31,6 +29,7 @@ export interface GuildConfigDocument {
   jailChannelId?: string;
   greetChannels?: string[];
   greetMessage?: string;
+  greetDurationMs?: number;
 }
 
 const GuildConfigSchema = new Schema<GuildConfigDocument>(
@@ -51,10 +50,6 @@ const GuildConfigSchema = new Schema<GuildConfigDocument>(
       voice: { type: String, required: false },
       invites: { type: String, required: false }
     },
-    welcome: {
-      channelId: { type: String, required: false },
-      message: { type: String, required: false, maxlength: 2_000 }
-    },
     adminRoleIds: { type: [String], default: [] },
     modRoleIds: { type: [String], default: [] },
     fakePermissions: { type: Schema.Types.Mixed, default: {} },
@@ -67,6 +62,13 @@ const GuildConfigSchema = new Schema<GuildConfigDocument>(
       required: false,
       maxlength: 2_000,
       default: 'Welcome to the server, {{user}}!'
+    },
+    greetDurationMs: {
+      type: Number,
+      default: DEFAULT_GREET_DURATION_MS,
+      min: MIN_GREET_DURATION_MS,
+      max: MAX_GREET_DURATION_MS,
+      validate: Number.isSafeInteger
     }
   },
   {

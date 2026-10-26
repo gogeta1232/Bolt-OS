@@ -4,23 +4,24 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
 import { getEmoji } from '../../../config/emojis.js';
+import { isOwnMessage } from '../../../lib/message-log.js';
 
 export class MessageBulkDeleteListener extends Listener {
   public constructor(context: Listener.Context, options: Listener.Options) {
     super(context, { ...options, event: 'messageDeleteBulk' });
   }
 
-  public async run(messages: Collection<string, Message<boolean>>) {
-    if (messages.size === 0) return;
+  public async run(messages: Collection<string, Message<boolean>>): Promise<void> {
+    const eligible = messages.filter((message) => !isOwnMessage(message, this.container.client.user?.id));
+    if (eligible.size === 0) return;
 
-    const firstMessage = messages.first();
+    const firstMessage = eligible.first();
     if (!firstMessage?.guild) return;
 
     const { guild, channel } = firstMessage;
 
-    // Process async in background - don't block
     const channelName = 'name' in channel ? (channel.name ?? channel.id) : channel.id;
-    void this.logBulkDeletion(guild.id, guild.name, channel.id, channelName, messages);
+    await this.logBulkDeletion(guild.id, guild.name, channel.id, channelName, eligible);
   }
 
   private async logBulkDeletion(

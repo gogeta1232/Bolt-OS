@@ -2,6 +2,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import { type ChatInputCommandInteraction, Attachment as DiscordAttachment, Message, MessageFlags } from 'discord.js';
 
+import { NO_MENTIONS } from '../../lib/mentions.js';
 import { getEmoji } from '../../config/emojis.js';
 import { rich, v2 } from '../../lib/embeds.js';
 import { downloadDiscordImage } from '../../lib/remote-media.js';
@@ -211,7 +212,7 @@ export class StealCommand extends Command {
         ],
         footer: 'Methods: reply • emoji • attachment • URL'
       });
-      await message.reply({ ...helpPayload, allowedMentions: { repliedUser: false } } as never);
+      await message.reply({ ...helpPayload, allowedMentions: NO_MENTIONS } as never);
       return;
     }
 
@@ -226,7 +227,7 @@ export class StealCommand extends Command {
             kind: 'danger'
           })
         ],
-        allowedMentions: { repliedUser: false }
+        allowedMentions: NO_MENTIONS
       });
     }
   }
@@ -360,7 +361,7 @@ export class StealCommand extends Command {
       blocks: [`${getEmoji('timeout')} Adding ${emojis.length} emojis... Please wait.`]
     });
     const progMsg = await message
-      .reply({ ...progressPayload, allowedMentions: { repliedUser: false } } as never)
+      .reply({ ...progressPayload, allowedMentions: NO_MENTIONS } as never)
       .catch(() => null);
     const results: Array<{ name: string; success: boolean; error?: string }> = [];
     for (const emoji of emojis) {

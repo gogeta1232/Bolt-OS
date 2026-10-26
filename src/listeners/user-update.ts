@@ -24,30 +24,37 @@ export class UserUpdateListener extends Listener<typeof Events.UserUpdate> {
     super(context, { ...options, event: Events.UserUpdate });
   }
 
-  public override async run(oldUser: User, newUser: User) {
+  public override async run(oldUser: User, newUser: User): Promise<void> {
     try {
-      // Bots previously skipped — now handled (pfp/banner changes for bots need logging too)
-      // No early return; bot avatar/banner changes are valid member logs.
-
+      const timestamp = Date.now();
+      const usernameChanged = oldUser.username !== newUser.username;
+      const oldGlobal = oldUser.globalName;
+      const newGlobal = newUser.globalName;
+      // Invalidate before fetch: Discord's cached User can mutate while awaiting REST.
+      if (usernameChanged || oldGlobal !== newGlobal) {
+        for (const guild of this.container.client.guilds.cache.values()) {
+          if (guild.members.cache.has(newUser.id)) this.container.memberResolver.invalidateGuild(guild.id);
+        }
+      }
       const lines: string[] = [];
       const galleryUrls: string[] = [];
 
       const code = (v: string | null | undefined): string => {
-        if (!v) return '*none*';
-        return `\`${v.replace(/`/g, "'").slice(0, 32)}\``;
+        if (!v) return '*not set*';
+        return `\`${v.replace(/`/g, "'")}\``;
       };
 
-      if (oldUser.username !== newUser.username) {
-        lines.push(`${getEmoji('user')} ${code(oldUser.username)} → ${code(newUser.username)}`);
+      if (!newUser.bot && usernameChanged) {
+        lines.push(`${getEmoji('user')} Username: ${code(oldUser.username)} → ${code(newUser.username)}`);
       }
 
-      const oldGlobal = (oldUser as unknown as { globalName?: string | null }).globalName ?? null;
-      const newGlobal = (newUser as unknown as { globalName?: string | null }).globalName ?? null;
-      if (oldGlobal !== newGlobal) {
-        lines.push(`${getEmoji('globe')} ${code(oldGlobal)} → ${code(newGlobal)}`);
+      if (!newUser.bot && oldGlobal !== newGlobal) {
+        const action = newGlobal === null ? 'cleared' : oldGlobal === null ? 'set' : 'changed';
+        const after = newGlobal === null ? `${code(newUser.username)} (username)` : code(newGlobal);
+        lines.push(`${getEmoji('globe')} Display name ${action}: ${code(oldGlobal)} → ${after}`);
       }
 
-      if (oldUser.avatar !== newUser.avatar) {
+      if (!newUser.bot && oldUser.avatar !== newUser.avatar) {
         const beforeUrl = oldUser.displayAvatarURL({ size: 1024, forceStatic: false, extension: 'png' });
         const afterUrl = newUser.displayAvatarURL({ size: 1024, forceStatic: false, extension: 'png' });
         lines.push(`${getEmoji('avatar')} Avatar updated`);
@@ -116,15 +123,12 @@ export class UserUpdateListener extends Listener<typeof Events.UserUpdate> {
       const sends: Promise<unknown>[] = [];
       for (const guild of this.container.client.guilds.cache.values()) {
         if (!guild.members.cache.has(newUser.id)) continue;
-        if (oldUser.username !== newUser.username || oldGlobal !== newGlobal) {
-          this.container.memberResolver.invalidateGuild(guild.id);
-        }
         sends.push(
           this.container.logging
             .sendMemberUpdateLog(guild, body, {
               target: newUser,
               showTargetAvatar: true,
-              timestamp: Date.now(),
+              timestamp,
               galleryUrls: dedupedGallery.length ? dedupedGallery : undefined
             })
             .catch(() => undefined)

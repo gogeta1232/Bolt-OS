@@ -12,6 +12,7 @@ import {
 import { buildAfkSetContainer, extractImageUrlFromText, isImageAttachment } from '../../lib/afk-views.js';
 import { getEmoji } from '../../config/emojis.js';
 import { downloadDiscordImage } from '../../lib/remote-media.js';
+import { replyOrEdit } from '../../lib/respond.js';
 
 const MAX_AFK_MESSAGE_LENGTH = 200;
 const AFK_FETCH_TIMEOUT_MS = 8000;
@@ -75,9 +76,10 @@ export class AfkCommand extends Command {
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await replyOrEdit(interaction, { content: 'Guild only.', flags: MessageFlags.Ephemeral });
       return;
     }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const sub = interaction.options.getSubcommand();
     const member = interaction.member as GuildMember | null;
 
@@ -85,18 +87,21 @@ export class AfkCommand extends Command {
       const target = interaction.options.getUser('user');
       if (target && target.id !== interaction.user.id) {
         if (!isAdmin(member)) {
-          await interaction.reply({ content: 'Only admins can clear others AFK.', flags: MessageFlags.Ephemeral });
+          await replyOrEdit(interaction, {
+            content: 'Only admins can clear others AFK.',
+            flags: MessageFlags.Ephemeral
+          });
           return;
         }
         const cleared = await this.container.afk.clear(interaction.guild.id, target.id);
-        await interaction.reply({
+        await replyOrEdit(interaction, {
           content: cleared ? `Cleared AFK for ${target.tag}.` : `${target.tag} was not AFK.`,
           flags: MessageFlags.Ephemeral
         });
         return;
       }
       const cleared = await this.container.afk.clear(interaction.guild.id, interaction.user.id);
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         content: cleared ? 'You are no longer AFK.' : 'You were not AFK.',
         flags: MessageFlags.Ephemeral
       });
@@ -107,7 +112,7 @@ export class AfkCommand extends Command {
       const target = interaction.options.getUser('user') ?? interaction.user;
       const profile = await this.container.afk.fetch(interaction.guild.id, target.id);
       if (!profile) {
-        await interaction.reply({
+        await replyOrEdit(interaction, {
           content: `${target.id === interaction.user.id ? 'You are' : `${target.tag} is`} not AFK.`,
           flags: MessageFlags.Ephemeral
         });
@@ -115,7 +120,7 @@ export class AfkCommand extends Command {
       }
       const ts = Math.floor(new Date(profile.setAt).getTime() / 1000);
       const attachNote = profile.attachmentUrl ? ` · ${getEmoji('paperclip')} image` : '';
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         content: `${target.tag} is AFK: ${profile.message} (since <t:${ts}:R>)${attachNote}`,
         flags: MessageFlags.Ephemeral
       });
@@ -133,7 +138,10 @@ export class AfkCommand extends Command {
     let targetMember = member;
     if (targetUser && targetUser.id !== interaction.user.id) {
       if (!isAdmin(member)) {
-        await interaction.reply({ content: 'Only admins can set AFK for others.', flags: MessageFlags.Ephemeral });
+        await replyOrEdit(interaction, {
+          content: 'Only admins can set AFK for others.',
+          flags: MessageFlags.Ephemeral
+        });
         return;
       }
       targetId = targetUser.id;
@@ -144,11 +152,14 @@ export class AfkCommand extends Command {
 
     // Validate image is not video — allow gif that Discord serves as video/mp4
     if (imageAtt && imageAtt.contentType?.startsWith('video/') && !imageAtt.name.toLowerCase().endsWith('.gif')) {
-      await interaction.reply({ content: 'Videos are not allowed — only images/GIFs.', flags: MessageFlags.Ephemeral });
+      await replyOrEdit(interaction, {
+        content: 'Videos are not allowed — only images/GIFs.',
+        flags: MessageFlags.Ephemeral
+      });
       return;
     }
     if (imageAtt && !isImageAttachment({ contentType: imageAtt.contentType, name: imageAtt.name, url: imageAtt.url })) {
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         content: 'Only images/GIFs allowed (png, jpg, jpeg, gif, webp).',
         flags: MessageFlags.Ephemeral
       });
@@ -194,7 +205,7 @@ export class AfkCommand extends Command {
       const isSameAttach = resolvedNewAttach === existingAttach;
       // Don't reset if already AFK with same content (prevents !afk spam resetting timer)
       if (isSameMessage && isSameAttach) {
-        await interaction.reply({
+        await replyOrEdit(interaction, {
           content: `You're already AFK: ${existing.message}${existingAttach ? ' · ' + getEmoji('paperclip') : ''} · <t:${Math.floor(new Date(existing.setAt).getTime() / 1000)}:R>`,
           flags: MessageFlags.Ephemeral
         });
@@ -204,21 +215,26 @@ export class AfkCommand extends Command {
       const isBareAfk =
         !removeImage && !slashAtt && !textImage && (rawMessage.trim() === '' || rawMessage.trim() === 'AFK');
       if (isBareAfk) {
-        await interaction.reply({
+        await replyOrEdit(interaction, {
           content: `You're already AFK: ${existing.message}${existingAttach ? ' · ' + getEmoji('paperclip') : ''} · <t:${Math.floor(new Date(existing.setAt).getTime() / 1000)}:R>`,
           flags: MessageFlags.Ephemeral
         });
         return;
       }
     }
-    const profile = await this.container.afk.set({
+    const stored = await this.container.afk.set({
       guildId: interaction.guild.id,
       userId: targetId,
       message: finalMessage,
       attachmentUrl
     });
-    void profile;
-    const stored = await this.container.afk.fetch(interaction.guild.id, targetId);
+    if (!stored) {
+      await replyOrEdit(interaction, {
+        content: 'Could not save your AFK status. Try again shortly.',
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
     let finalAttach: string | null = stored?.attachmentUrl ?? attachmentUrl ?? null;
 
     // Use early fetched file if we have it, otherwise try to fetch stored (for existing image kept)
@@ -226,7 +242,7 @@ export class AfkCommand extends Command {
     let displayUrl: string | null | undefined = earlyDisplayUrl ?? finalAttach ?? undefined;
     if (!files && finalAttach) {
       // If we didn't already fetch (e.g., keeping existing attachment), try now
-      if (finalAttach !== attachmentUrl || !earlyFiles) {
+      if (finalAttach !== attachmentUrl) {
         const fetched = await tryFetchAfkFile(finalAttach);
         if (fetched) {
           files = [fetched];
@@ -238,8 +254,8 @@ export class AfkCommand extends Command {
         }
       }
     }
-    // If we had a paste that failed, ensure no broken gallery
-    if (attachmentUrl === textImage && !canReupload) {
+    // The supplied URL was already attempted once; hide a failed upload.
+    if (attachmentUrl && !canReupload) {
       displayUrl = undefined;
       files = undefined;
     }
@@ -255,15 +271,15 @@ export class AfkCommand extends Command {
 
     const isOther = targetId !== interaction.user.id;
     if (isOther) {
-      await interaction.reply({ content: `Set AFK for ${targetTag}.`, flags: MessageFlags.Ephemeral });
+      await replyOrEdit(interaction, { content: `Set AFK for ${targetTag}.`, flags: MessageFlags.Ephemeral });
       // Optionally send public notice? Keep ephemeral
       return;
     }
 
     if (files) {
-      await interaction.reply({ ...containerPayload, files } as never);
+      await replyOrEdit(interaction, { ...containerPayload, files });
     } else {
-      await interaction.reply(containerPayload as never);
+      await replyOrEdit(interaction, containerPayload);
     }
   }
 
@@ -505,9 +521,16 @@ export class AfkCommand extends Command {
       }
     }
 
-    await this.container.afk.set({ guildId: guild.id, userId: finalTargetId, message: finalMessage, attachmentUrl });
-
-    const stored = await this.container.afk.fetch(guild.id, finalTargetId);
+    const stored = await this.container.afk.set({
+      guildId: guild.id,
+      userId: finalTargetId,
+      message: finalMessage,
+      attachmentUrl
+    });
+    if (!stored) {
+      await message.reply('Could not save your AFK status. Try again shortly.');
+      return;
+    }
     let finalAttach: string | null = stored?.attachmentUrl ?? attachmentUrl ?? null;
 
     // Use early fetched file if available, otherwise try to fetch stored (for keeping existing)

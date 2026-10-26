@@ -1,13 +1,14 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command, RegisterBehavior } from '@sapphire/framework';
 import type { ChatInputCommandInteraction, GuildChannel, GuildMember, TextChannel } from 'discord.js';
-import { Message, Role } from 'discord.js';
+import { MessageFlags, Message, Role } from 'discord.js';
 
+import { NO_MENTIONS } from '../../lib/mentions.js';
 import { createEmbed } from '../../config/theme.js';
 import { getEmoji } from '../../config/emojis.js';
 import { ChannelSnapshotModel } from '../../database/models/guild/ChannelSnapshot.js';
 import { hasModerationPermission } from '../../lib/utils/moderation-permission-checker.js';
-import { replyNoPermission } from '../../lib/respond.js';
+import { replyNoPermission, replyOrEdit } from '../../lib/respond.js';
 
 @ApplyOptions<Command.Options>({
   name: 'unhide',
@@ -29,6 +30,7 @@ export class UnhideCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guild = interaction.guild;
     if (!guild) return;
     const member = interaction.member as GuildMember | null;
@@ -38,7 +40,7 @@ export class UnhideCommand extends Command {
     }
     const channel = interaction.channel as GuildChannel | null;
     if (!channel || !('permissionOverwrites' in channel)) {
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [createEmbed({ description: 'This command must be used in a channel.', type: 'warning' })],
         ephemeral: true
       });
@@ -268,14 +270,10 @@ export class UnhideCommand extends Command {
   ) {
     const embed = createEmbed({ description, type, styled: false });
     if (source instanceof Message) {
-      await source.reply({ embeds: [embed], allowedMentions: { repliedUser: false } });
+      await source.reply({ embeds: [embed], allowedMentions: NO_MENTIONS });
     } else {
       const payload = { embeds: [embed], ephemeral: true } as const;
-      if (source.deferred || source.replied) {
-        await source.followUp(payload);
-      } else {
-        await source.reply(payload);
-      }
+      await replyOrEdit(source, payload);
     }
   }
 }

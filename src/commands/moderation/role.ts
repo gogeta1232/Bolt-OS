@@ -1,12 +1,13 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command, RegisterBehavior } from '@sapphire/framework';
-import { GuildMember, Message, Role, type ChatInputCommandInteraction, type Guild } from 'discord.js';
+import { MessageFlags, GuildMember, Message, Role, type ChatInputCommandInteraction, type Guild } from 'discord.js';
 import Fuse from 'fuse.js';
 
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
 import { getEmoji } from '../../config/emojis.js';
 import { buildModerationContext } from '../../config/logging.js';
 import { replyGuildOnly, replyToast } from '../../lib/respond.js';
+import { mapConcurrent } from '../../lib/map-concurrent.js';
 import { collectEvidence } from '../../lib/evidence.js';
 
 interface ResolvedToggle {
@@ -14,43 +15,6 @@ interface ResolvedToggle {
   member: GuildMember;
   reason: string;
   evidence: string[];
-}
-
-/**
- * Cache for Fuse.js instances to avoid rebuilding search index
- */
-const roleSearchCache = new Map<string, { fuse: Fuse<Role>; roles: Role[] }>();
-
-/**
- * Simple in-memory cache for role and member search results with TTL
- */
-const searchResultCache = new Map<string, { timestamp: number; data: unknown }>();
-
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Get cached result if available and not expired
- */
-function getCachedResult<T>(key: string): T | null {
-  const cached = searchResultCache.get(key);
-  if (!cached) return null;
-
-  if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
-    searchResultCache.delete(key);
-    return null;
-  }
-
-  return cached.data as T;
-}
-
-/**
- * Cache search result
- */
-function setCachedResult<T>(key: string, data: T): void {
-  searchResultCache.set(key, {
-    timestamp: Date.now(),
-    data
-  });
 }
 
 @ApplyOptions<Command.Options>({
@@ -80,6 +44,7 @@ export class RoleToggleCommand extends AdminCommand {
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     await this.ensureAdmin(interaction);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
       await replyGuildOnly(interaction);
       return;
@@ -305,37 +270,22 @@ export class RoleToggleCommand extends AdminCommand {
 
       if (tokens.length < 2) return null;
 
-      // Execute ALL role/member searches in PARALLEL for maximum speed
-      // This replaces the sequential O(n²) loop with parallel execution
-      const searchPromises: Promise<{
-        roleResult: { role: Role | null; score: number };
-        memberResult: { member: GuildMember | null; score: number; feedback?: string };
-        split: number;
-      }>[] = [];
-
-      for (let split = 1; split < tokens.length; split++) {
-        const roleQuery = tokens.slice(0, split).join(' ');
-        const memberQuery = tokens.slice(split).join(' ');
-
-        // Run role and member search in parallel for each split
-        const promise = (async () => {
-          const [roleResult, memberResult] = await Promise.all([
-            this.findRole(guild, roleQuery),
-            this.findMember(message, memberQuery)
-          ]);
-          return { roleResult, memberResult, split };
-        })();
-
-        searchPromises.push(promise);
-      }
-
-      // Wait for all searches to complete
-      const results = await Promise.all(searchPromises);
+      const splits = Array.from({ length: tokens.length - 1 }, (_, index) => index + 1);
+      // Search members only when the corresponding role resolves. Lazy workers
+      // prevent long input from issuing every remote member lookup at once.
+      const results = await mapConcurrent(splits, 3, async (split) => {
+        const roleResult = await this.findRole(guild, tokens.slice(0, split).join(' '));
+        if (!roleResult.role) return null;
+        const memberResult = await this.findMember(message, tokens.slice(split).join(' '));
+        return { roleResult, memberResult };
+      });
 
       // Find the best match from all parallel results
       let best: { score: number; role: Role; member: GuildMember } | null = null;
 
-      for (const { roleResult, memberResult } of results) {
+      for (const result of results) {
+        if (!result) continue;
+        const { roleResult, memberResult } = result;
         if (!memberResult.member && memberResult.feedback) {
           feedback = memberResult.feedback;
         }
@@ -368,47 +318,21 @@ export class RoleToggleCommand extends AdminCommand {
       return { role: null as Role | null, score: Number.POSITIVE_INFINITY };
     }
 
-    // Check result cache first
-    const cacheKey = `role_${guild.id}_${query}`;
-    const cached = getCachedResult<{ role: Role | null; score: number }>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
     const trimmed = query.trim();
     if (/^\d{5,}$/.test(trimmed)) {
       const role = guild.roles.cache.get(trimmed) ?? (await guild.roles.fetch(trimmed).catch(() => null));
       if (role) {
         const result = { role, score: 0 };
-        setCachedResult(cacheKey, result);
         return result;
       }
     }
 
-    // Check Fuse cache first - use guild ID as cache key
-    const fuseCacheKey = `${guild.id}`;
-    let fuseCached = roleSearchCache.get(fuseCacheKey);
-
-    // Rebuild cache if not exists or if roles changed
-    if (!fuseCached || fuseCached.roles.length !== guild.roles.cache.size) {
-      const roles = Array.from(guild.roles.cache.values());
-      const fuse = new Fuse(roles, {
-        keys: ['name'],
-        threshold: 0.4,
-        ignoreLocation: true
-      });
-      fuseCached = { fuse, roles };
-      roleSearchCache.set(fuseCacheKey, fuseCached);
-    }
-
-    const match = fuseCached.fuse.search(trimmed)[0];
-    const result = match
-      ? { role: match.item, score: match.score ?? 0 }
-      : { role: null as Role | null, score: Number.POSITIVE_INFINITY };
-
-    // Cache the result
-    setCachedResult(cacheKey, result);
-    return result;
+    const roles = [...guild.roles.cache.values()];
+    const exact = roles.find((role) => role.name.toLowerCase() === trimmed.toLowerCase());
+    if (exact) return { role: exact, score: 0 };
+    const fuse = new Fuse(roles, { keys: ['name'], threshold: 0.4, ignoreLocation: true, includeScore: true });
+    const match = fuse.search(trimmed)[0];
+    return match ? { role: match.item, score: match.score ?? 0 } : { role: null, score: Number.POSITIVE_INFINITY };
   }
 
   private async findMember(message: Message, query: string) {
@@ -421,18 +345,6 @@ export class RoleToggleCommand extends AdminCommand {
       };
     }
 
-    const guildId = message.guild?.id ?? 'dm';
-    const cacheKey = `member_${guildId}_${query}`;
-    const cached = getCachedResult<{
-      member: GuildMember | null;
-      score: number;
-      consumed: number;
-      feedback?: string;
-    }>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
     const tokens = query.split(/\s+/).filter(Boolean);
     if (!tokens.length) {
       const result = {
@@ -441,7 +353,6 @@ export class RoleToggleCommand extends AdminCommand {
         consumed: 0,
         feedback: 'Provide a member name to search for.'
       };
-      setCachedResult(cacheKey, result);
       return result;
     }
 
@@ -459,8 +370,6 @@ export class RoleToggleCommand extends AdminCommand {
           consumed: resolution.consumed
         };
 
-    // Cache the result
-    setCachedResult(cacheKey, result);
     return result;
   }
 }

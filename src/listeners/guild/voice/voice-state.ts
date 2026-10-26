@@ -2,8 +2,6 @@ import { Events, Listener } from '@sapphire/framework';
 import type { VoiceState } from 'discord.js';
 import { Collection } from 'discord.js';
 
-import { getEmoji } from '../../../config/emojis.js';
-
 const voiceSessions = new Collection<string, number>();
 
 export class VoiceStateUpdateListener extends Listener<typeof Events.VoiceStateUpdate> {
@@ -11,7 +9,7 @@ export class VoiceStateUpdateListener extends Listener<typeof Events.VoiceStateU
     super(context, { ...options, event: Events.VoiceStateUpdate });
   }
 
-  public async run(oldState: VoiceState, newState: VoiceState) {
+  public async run(oldState: VoiceState, newState: VoiceState): Promise<void> {
     const member = newState.member ?? oldState.member;
     if (!member) return;
 
@@ -25,29 +23,25 @@ export class VoiceStateUpdateListener extends Listener<typeof Events.VoiceStateU
     if (!oldChannel && newChannel) {
       // User joins a voice channel
       voiceSessions.set(sessionKey, Date.now());
-      await this.container.logging.sendVoiceLog(
-        guild,
-        `${getEmoji('voiceJoin')} ${member} joined voice channel ${newChannel}`,
-        {
-          showTargetAvatar: true,
-          emojiIconUrl: member.user.displayAvatarURL({ size: 256 })
-        }
-      );
+      await this.container.logging.sendVoiceLog(guild, `${member} joined ${newChannel}`, {
+        activity: 'voiceJoin',
+        target: member.user,
+        channel: { id: newChannel.id, name: newChannel.name },
+        timestamp: Date.now()
+      });
     } else if (oldChannel && !newChannel) {
       // User leaves a voice channel
       const startTime = voiceSessions.get(sessionKey);
       const duration = startTime ? this.formatDuration(Date.now() - startTime) : 'Unknown';
       voiceSessions.delete(sessionKey);
 
-      await this.container.logging.sendVoiceLog(
-        guild,
-        `${getEmoji('voiceLeave')} ${member} left voice channel ${oldChannel}`,
-        {
-          showTargetAvatar: true,
-          emojiIconUrl: member.user.displayAvatarURL({ size: 256 }),
-          metadata: { 'Session Duration': duration }
-        }
-      );
+      await this.container.logging.sendVoiceLog(guild, `${member} left ${oldChannel}`, {
+        activity: 'voiceLeave',
+        target: member.user,
+        channel: { id: oldChannel.id, name: oldChannel.name },
+        timestamp: Date.now(),
+        duration
+      });
     }
   }
 
@@ -59,9 +53,11 @@ export class VoiceStateUpdateListener extends Listener<typeof Events.VoiceStateU
       m: Math.floor(ms / 60000) % 60,
       s: Math.floor(ms / 1000) % 60
     };
-    return Object.entries(time)
-      .filter((val) => val[1] !== 0)
-      .map(([key, val]) => `${val}${key}`)
-      .join(', ');
+    return (
+      Object.entries(time)
+        .filter((val) => val[1] !== 0)
+        .map(([key, val]) => `${val}${key}`)
+        .join(' ') || '<1s'
+    );
   }
 }

@@ -2,10 +2,13 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import { Message, MessageFlags, PermissionFlagsBits, TextChannel } from 'discord.js';
 import type { ChatInputCommandInteraction } from 'discord.js';
+import prettyMs from 'pretty-ms';
 
 import { createEmbed } from '../../config/theme.js';
 import { getEmoji } from '../../config/emojis.js';
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
+import { parseGreetDuration, resolveGreetDuration } from '../../lib/greeting.js';
+import { hasAdminAccess } from '../../lib/permissions.js';
 
 @ApplyOptions<Command.Options>({
   name: 'setgreetchannel',
@@ -57,22 +60,50 @@ export class SetGreetChannelCommand extends AdminCommand {
                   .setRequired(true)
                   .setMaxLength(2_000)
               )
+          )
+          .addSubcommand((sub) =>
+            sub
+              .setName('duration')
+              .setDescription('Set how long new greetings last before deletion')
+              .addStringOption((option) =>
+                option
+                  .setName('time')
+                  .setDescription('1 second to 365 days, e.g. 30s, 5m, 2h or 1d')
+                  .setRequired(true)
+                  .setMaxLength(100)
+              )
           ),
       { behaviorWhenNotIdentical: RegisterBehavior.Overwrite }
     );
   }
 
-  public override async chatInputRun(interaction: ChatInputCommandInteraction) {
-    await this.ensureAdmin(interaction);
+  public override async chatInputRun(interaction: ChatInputCommandInteraction): Promise<void> {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+      const guild = interaction.guild;
+      const member = await guild?.members.fetch({ user: interaction.user.id, force: true }).catch(() => null);
+      if (!guild || !member || !(await hasAdminAccess(guild, member, interaction.user.id))) {
+        await interaction.editReply({ content: 'Administrator permissions required.' });
+        return;
+      }
+      await this.runChatInput(interaction);
+    } catch (error) {
+      this.container.logger.error({ err: error, guildId: interaction.guildId }, 'Greet configuration failed');
+      await interaction.editReply({
+        content: 'Could not update greet settings. Please try again.'
+      });
+    }
+  }
+
+  private async runChatInput(interaction: ChatInputCommandInteraction): Promise<void> {
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === 'add') {
       const channelsStr = interaction.options.getString('channels', true);
       const channels = this.resolveChannelsFromString(interaction, channelsStr);
       if (channels.length === 0) {
-        await interaction.reply({
-          embeds: [createEmbed({ description: 'No valid channels found in your input.', type: 'warning' })],
-          flags: MessageFlags.Ephemeral
+        await interaction.editReply({
+          embeds: [createEmbed({ description: 'No valid channels found in your input.', type: 'warning' })]
         });
         return;
       }
@@ -81,9 +112,8 @@ export class SetGreetChannelCommand extends AdminCommand {
       const channelsStr = interaction.options.getString('channels', true);
       const channels = this.resolveChannelsFromString(interaction, channelsStr);
       if (channels.length === 0) {
-        await interaction.reply({
-          embeds: [createEmbed({ description: 'No valid channels found in your input.', type: 'warning' })],
-          flags: MessageFlags.Ephemeral
+        await interaction.editReply({
+          embeds: [createEmbed({ description: 'No valid channels found in your input.', type: 'warning' })]
         });
         return;
       }
@@ -93,10 +123,12 @@ export class SetGreetChannelCommand extends AdminCommand {
     } else if (subcommand === 'message') {
       const template = interaction.options.getString('template', true);
       await this.setGreetMessage(interaction, template);
+    } else if (subcommand === 'duration') {
+      await this.setGreetDuration(interaction, interaction.options.getString('time', true));
     }
   }
 
-  public override async messageRun(message: Message, args: Args) {
+  public override async messageRun(message: Message, args: Args): Promise<void> {
     await this.ensureAdmin(message);
     const channel = message.channel;
     if (!channel || !('send' in channel)) return;
@@ -129,6 +161,8 @@ export class SetGreetChannelCommand extends AdminCommand {
       }
 
       await this.setGreetMessage(message, template);
+    } else if (subcommand === 'duration') {
+      await this.setGreetDuration(message, await args.rest('string').catch(() => ''));
     } else {
       await this.listGreetChannels(message);
     }
@@ -181,7 +215,7 @@ export class SetGreetChannelCommand extends AdminCommand {
         await source.channel.send({ embeds: [createEmbed({ description, type: 'success' })] });
       }
     } else {
-      await source.reply({ embeds: [createEmbed({ description, type: 'success' })], flags: MessageFlags.Ephemeral });
+      await source.editReply({ embeds: [createEmbed({ description, type: 'success' })] });
     }
 
     const actor = source instanceof Message ? source.author : source.user;
@@ -231,7 +265,7 @@ export class SetGreetChannelCommand extends AdminCommand {
         await source.channel.send({ embeds: [createEmbed({ description, type: 'success' })] });
       }
     } else {
-      await source.reply({ embeds: [createEmbed({ description, type: 'success' })], flags: MessageFlags.Ephemeral });
+      await source.editReply({ embeds: [createEmbed({ description, type: 'success' })] });
     }
 
     const actor = source instanceof Message ? source.author : source.user;
@@ -253,28 +287,29 @@ export class SetGreetChannelCommand extends AdminCommand {
     const config = await this.container.config.fetch(source.guild!.id);
     const greetChannels = config.greetChannels || [];
 
+    const duration = prettyMs(resolveGreetDuration(config.greetDurationMs), { verbose: true });
     if (greetChannels.length === 0) {
-      const description = 'No greet channels configured. Use `/setgreetchannel add #channel` to add one.';
+      const description = `No greet channels configured. Use \`/setgreetchannel add #channel\` to add one.\nDelete greetings after: ${duration}`;
       if (source instanceof Message) {
         const originChannel = source.channel;
         if (originChannel && 'send' in originChannel) {
           await originChannel.send({ embeds: [createEmbed({ description, type: 'info' })] });
         }
       } else {
-        await source.reply({ embeds: [createEmbed({ description, type: 'info' })], flags: MessageFlags.Ephemeral });
+        await source.editReply({ embeds: [createEmbed({ description, type: 'info' })] });
       }
       return;
     }
 
     const channelList = greetChannels.map((id) => `<#${id}>`).join(', ');
-    const description = `Greet channels (${greetChannels.length}):\n${channelList}`;
+    const description = `Greet channels (${greetChannels.length}):\n${channelList}\nDelete greetings after: ${duration}`;
     if (source instanceof Message) {
       const originChannel = source.channel;
       if (originChannel && 'send' in originChannel) {
         await originChannel.send({ embeds: [createEmbed({ description, type: 'info' })] });
       }
     } else {
-      await source.reply({ embeds: [createEmbed({ description, type: 'info' })], flags: MessageFlags.Ephemeral });
+      await source.editReply({ embeds: [createEmbed({ description, type: 'info' })] });
     }
   }
 
@@ -288,7 +323,7 @@ export class SetGreetChannelCommand extends AdminCommand {
         await originChannel.send({ embeds: [createEmbed({ description, type: 'success' })] });
       }
     } else {
-      await source.reply({ embeds: [createEmbed({ description, type: 'success' })], flags: MessageFlags.Ephemeral });
+      await source.editReply({ embeds: [createEmbed({ description, type: 'success' })] });
     }
 
     const actor = source instanceof Message ? source.author : source.user;
@@ -299,5 +334,30 @@ export class SetGreetChannelCommand extends AdminCommand {
         'New Template': template
       }
     });
+  }
+
+  private async setGreetDuration(source: ChatInputCommandInteraction | Message, input: string): Promise<void> {
+    const duration = input.length <= 100 ? parseGreetDuration(input) : null;
+    const description = duration
+      ? `New greetings will be deleted after ${duration.pretty}.`
+      : 'Use a duration from 1 second to 365 days, such as 30s, 5m, 2h or 1d.';
+    if (duration && source.guild) {
+      await this.container.config.set(source.guild.id, { greetDurationMs: duration.milliseconds });
+    }
+    const payload = {
+      embeds: [createEmbed({ description, type: duration ? 'success' : 'warning' })],
+      allowedMentions: { parse: [] }
+    };
+    if (source instanceof Message) {
+      if ('send' in source.channel) await source.channel.send(payload);
+    } else {
+      await source.editReply(payload);
+    }
+    if (duration && source.guild) {
+      await this.container.logging.sendAuditLog(source.guild, `${getEmoji('audit')} Greet duration updated`, {
+        actor: source instanceof Message ? source.author : source.user,
+        metadata: { Duration: duration.pretty }
+      });
+    }
   }
 }

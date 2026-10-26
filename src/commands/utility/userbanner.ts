@@ -3,6 +3,7 @@ import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import { type ChatInputCommandInteraction, type GuildMember, Message, type User, MessageFlags } from 'discord.js';
 
 import { single, v2 } from '../../lib/embeds.js';
+import { fetchUserProfile } from '../../lib/user-profile.js';
 
 @ApplyOptions<Command.Options>({
   name: 'userbanner',
@@ -26,23 +27,9 @@ export class UserBannerCommand extends Command {
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     const target = interaction.options.getUser('target') ?? interaction.user;
     const member = interaction.guild?.members.cache.get(target.id) ?? null;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const payload = await this.buildV2(target, member);
-    // keep ephemeral flag if payload is single (warning) else v2 already ephemeral if needed
-    const payloadRecord = payload as unknown as Record<string, unknown>;
-    if (typeof payload === 'object' && payload !== null && 'embeds' in payloadRecord) {
-      await interaction.reply({
-        ...(payloadRecord as unknown as Record<string, unknown>),
-        flags: MessageFlags.Ephemeral
-      } as unknown as Parameters<typeof interaction.reply>[0]);
-    } else {
-      // v2 payload already encodes ephemeral via flags when needed — but for banner we want ephemeral when from slash? keep consistent with prior (ephemeral true)
-      const v2Payload = payloadRecord as unknown as { flags: number };
-      const withEphemeral = {
-        ...(payloadRecord as unknown as Record<string, unknown>),
-        flags: v2Payload.flags | 64
-      } as unknown as Parameters<typeof interaction.reply>[0];
-      await interaction.reply(withEphemeral);
-    }
+    await interaction.editReply(payload);
   }
 
   public override async messageRun(message: Message, args: Args) {
@@ -53,16 +40,16 @@ export class UserBannerCommand extends Command {
     let member: GuildMember | null = null;
 
     // Sapphire Args: memberResolved / user preferred, fallback to resolver + mentions
-    const mPeek = await args.peekResult('memberResolved');
-    if (mPeek.isOk()) {
-      const resolved = await args.pick('memberResolved');
+    const memberResult = await args.pickResult('memberResolved');
+    if (memberResult.isOk()) {
+      const resolved = memberResult.unwrap();
       member = resolved;
       target = resolved.user;
       await args.rest('string').catch(() => null);
     } else {
-      const uPeek = await args.peekResult('user');
-      if (uPeek.isOk()) {
-        const resolvedUser = await args.pick('user');
+      const userResult = await args.pickResult('user');
+      if (userResult.isOk()) {
+        const resolvedUser = userResult.unwrap();
         target = resolvedUser;
         member = message.guild
           ? (message.guild.members.cache.get(resolvedUser.id) ??
@@ -102,17 +89,17 @@ export class UserBannerCommand extends Command {
   }
 
   private async buildV2(user: User, member: GuildMember | null) {
-    const fetchedUser = await this.container.client.users.fetch(user.id, { force: true }).catch(() => null);
+    const fetchedUser = await fetchUserProfile(user);
     const bannerURL = fetchedUser?.bannerURL({ size: 4096 }) ?? null;
 
-    if (!bannerURL) {
+    if (!fetchedUser || !bannerURL) {
       return single(`${user.tag} doesn't have a banner set.`, 'warning');
     }
 
     const formats: Array<'png' | 'jpg' | 'webp' | 'gif'> = ['png', 'jpg', 'webp'];
     if (fetchedUser?.banner && fetchedUser.banner.startsWith('a_')) formats.unshift('gif');
     const links = formats
-      .map((fmt) => `[${fmt.toUpperCase()}](${fetchedUser!.bannerURL({ extension: fmt, size: 4096 })})`)
+      .map((fmt) => `[${fmt.toUpperCase()}](${fetchedUser.bannerURL({ extension: fmt, size: 4096 })})`)
       .join('  •  ');
 
     const accentColor = member?.displayColor && member.displayColor !== 0 ? member.displayColor : undefined;

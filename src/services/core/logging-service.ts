@@ -1,15 +1,55 @@
 import { container } from '@sapphire/framework';
 import { PermissionsBitField, type Guild, type GuildTextBasedChannel } from 'discord.js';
+import { createHash } from 'node:crypto';
 
 import { buildLogV2Container, type LogContext, type LogType } from '../../config/logging.js';
 import type { GuildConfigDocument } from '../../database/models/guild/GuildConfig.js';
 
 const LOG_CHANNEL_CACHE_TTL_MS = 10 * 60_000;
+const MESSAGE_EVENT_TTL_MS = 60_000;
+const MESSAGE_EVENT_CACHE_MAX = 2000;
 
-class LoggingService {
+export class LoggingService {
   private readonly channelCache = new Map<string, { channel: GuildTextBasedChannel; expiresAt: number }>();
-  public async sendLog(guild: Guild, type: LogType, description: string, context?: LogContext) {
-    await this.dispatch(guild, this.resolveChannelKey(type), type, description, context);
+  private readonly messageEvents = new Map<string, { revision: string; expiresAt: number }>();
+
+  public async sendLog(guild: Guild, type: LogType, description: string, context?: LogContext): Promise<void> {
+    const messageEvent = type === 'messageEdit' || type === 'messageDelete';
+    // This boundary also protects producers other than the gateway listeners.
+    if (messageEvent && context?.target && context.target.id === container.client.user?.id) return;
+    const key = messageEvent && context?.message ? `${guild.id}:${type}:${context.message.id}` : null;
+    const revision = context?.message?.revision ?? createHash('sha256').update(description).digest('hex');
+    const now = Date.now();
+    if (key) {
+      for (const [entryKey, entry] of this.messageEvents) {
+        if (entry.expiresAt <= now) this.messageEvents.delete(entryKey);
+      }
+      const previous = this.messageEvents.get(key);
+      if (previous?.revision === revision) return;
+    }
+    const entry = { revision, expiresAt: now + MESSAGE_EVENT_TTL_MS };
+    if (key) {
+      this.messageEvents.delete(key);
+      this.messageEvents.set(key, entry);
+      if (this.messageEvents.size > MESSAGE_EVENT_CACHE_MAX) {
+        const oldest = this.messageEvents.keys().next().value;
+        if (oldest) this.messageEvents.delete(oldest);
+      }
+    }
+    const sent = await this.dispatch(guild, this.resolveChannelKey(type), type, description, context);
+    // Failure is retryable; do not delete a newer edit that arrived during this send.
+    if (!sent && key && this.messageEvents.get(key) === entry) this.messageEvents.delete(key);
+  }
+
+  public invalidateGuild(guildId: string): void {
+    for (const cache of [this.channelCache, this.messageEvents]) {
+      for (const key of cache.keys()) if (key.startsWith(`${guildId}:`)) cache.delete(key);
+    }
+  }
+
+  public shutdown(): void {
+    this.channelCache.clear();
+    this.messageEvents.clear();
   }
 
   public async sendAuditLog(guild: Guild, description: string, context?: LogContext) {
@@ -111,13 +151,13 @@ class LoggingService {
     type: LogType,
     description: string,
     context?: LogContext
-  ) {
+  ): Promise<boolean> {
     try {
       const config = await container.config.fetch(guild.id);
       const channelId = config.logChannels?.[channelKey];
-      if (!channelId) return;
+      if (!channelId) return false;
       const channel = await this.resolveLogChannel(guild, channelId);
-      if (!channel) return;
+      if (!channel) return false;
       // Sleek V2: single Container per log — header pills, content, inline details, muted footer.
       const { components, flags, files } = buildLogV2Container(type, description, context);
       await channel.send({
@@ -128,8 +168,9 @@ class LoggingService {
         // snake_case is silently dropped and pings fire (verified against resolveBody).
         allowedMentions: { parse: [], users: [], roles: [], replied_user: false }
       } as never);
+      return true;
     } catch (error) {
-      container.logger.fatal(
+      container.logger.error(
         {
           err: error,
           guildId: guild.id,
@@ -139,6 +180,7 @@ class LoggingService {
         },
         'Failed to dispatch log'
       );
+      return false;
     }
   }
 

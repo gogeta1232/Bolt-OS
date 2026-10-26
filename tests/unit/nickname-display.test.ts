@@ -35,8 +35,18 @@ describe('nickname display fallback', () => {
   });
 
   test('first real nickname change after startup is not suppressed', () => {
-    const line = resolveNickChange(undefined, 'Before', 'After', 'Before', 'After');
+    const line = resolveNickChange('Before', 'After', 'Before', 'After');
     expect(line).toContain('Before');
     expect(line).toContain('After');
+  });
+
+  test('unchanged nicknames do not log fallback name changes', () => {
+    expect(resolveNickChange(null, null, 'Old display', 'New display')).toBeNull();
+  });
+
+  test('preserves the full Unicode nickname and labels same-name resets', () => {
+    const name = '😀'.repeat(32);
+    expect(formatNickChange('Before', name, 'Before', name)).toContain(name);
+    expect(formatNickChange('Same', null, 'Same', 'Same')).toContain('Nickname cleared: `Same` → `Same`');
   });
 });

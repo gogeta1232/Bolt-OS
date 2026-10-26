@@ -108,6 +108,9 @@ export class CasesCommand extends Command {
     }
 
     const subcommand = interaction.options.getSubcommand();
+    await interaction.deferReply({
+      flags: subcommand === 'view' || subcommand === 'update' ? MessageFlags.Ephemeral : undefined
+    });
     switch (subcommand) {
       case 'view': {
         const caseId = interaction.options.getInteger('id', true);
@@ -248,7 +251,9 @@ export class CasesCommand extends Command {
 
     if (source instanceof Message) {
       await source.reply({ components: [container], flags: CASE_COMPONENTS_FLAGS });
-    } else if (source.deferred || source.replied) {
+    } else if (source.deferred && !source.replied) {
+      await source.editReply({ components: [container], flags: CASE_COMPONENTS_FLAGS });
+    } else if (source.replied) {
       await source.followUp({ components: [container], flags: CASE_COMPONENTS_FLAGS | MessageFlags.Ephemeral });
     } else {
       await source.reply({ components: [container], flags: CASE_COMPONENTS_FLAGS | MessageFlags.Ephemeral });

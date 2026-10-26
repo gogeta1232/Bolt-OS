@@ -8,7 +8,7 @@
   TypeScript · <a href="https://github.com/sapphiredev/framework">Sapphire Framework</a> · MongoDB — moderation that rechecks at execution<br>
   <a href="#license"><img alt="ELv2" src="https://img.shields.io/badge/ELv2-f7b626?style=flat-square&labelColor=0c0c0d&color=f7b626"></a>
   <a href="#configure"><img alt="slash + prefix" src="https://img.shields.io/badge/slash%20%2B%20prefix-2a2a2a?style=flat-square&labelColor=0c0c0d&color=2a2a2a"></a><br>
-  <sub>44 commands · 4 modules · per-guild config · cases with evidence</sub>
+  <sub>42 commands · 4 modules · per-guild config · cases with evidence</sub>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@ A moderation bot that stays calm when things get messy. Every action writes a nu
 
 **Ladder** warn → mute / timeout → kick → ban / softban → jail (single-channel restrict)  
 **Cases** auto-numbered, editable, `!cases @user` / `/cases view #12`  
-**Cleanup** purge (user filter), slowmode, hide / unhide · **Identity** nick, role, voice · **Recovery** snipe / editsnipe · **Utility** afk, user/server/role info, steal emoji, greet
+**Cleanup** purge (user filter), slowmode, hide / unhide · **Identity** nick, role, voice · **Recovery** snipe / editsnipe · **Utility** afk, user/server/role info, steal emoji
 
 Works the same over slash and prefix. Per-guild prefix via `/setprefix`, slash always works.
 
@@ -118,7 +118,7 @@ npm start          # or clustered
 npm run start:cluster
 ```
 
-Env is validated on boot (`src/config/env.ts`). `.env` stays ignored. Health check at `EXPRESS_PORT`. See `docs/SHARDING.md` for clusters.
+Node loads an optional `.env` file before environment validation; host variables take priority. Env is validated on boot (`src/config/env.ts`). `.env` stays ignored. Health check at `EXPRESS_PORT`. See `docs/SHARDING.md` for clusters.
 
 ## Configure
 
@@ -130,23 +130,27 @@ All per-guild settings are `GuildConfig` (`src/database/models/guild/GuildConfig
 /givepermission add @Role ban kick   # granular fake — admin+
 /fmod @Role                  # blanket mod — legacy, admin+
 /setjailrole @Role  /setjailchannel #channel
-/setwelcome #general Hello {user}
+/setgreetchannel add channels:#general
+/setgreetchannel message template:Hello {{user}}!
+/setgreetchannel duration time:5m
 /setup                       # route audit / moderation / message / member / voice / case logs
 /autoresponder add hi hello
 ```
 
 Run `/permissions` or `!permissions @User` to see Key I (Discord) vs Key II (Bolt/fake) for anyone.
 
+Automatic greetings delete after the configured duration (1 second to 365 days, default 2 seconds). Pending deletions survive restarts. Permanent welcome messages and manual greeting commands have been removed.
+
 ## Commands
 
-| Module          | Commands                                                                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Moderation**  | ban, unban, softban, kick, timeout, warn, mute, jail, unjail, purge, slowmode, hide, unhide, voice, nick, role, cases                      |
-| **Permissions** | fadmin, fmod, givepermission (`gp` / `fakeperm`), permissions                                                                              |
-| **Admin**       | setup, setprefix, setjailrole, setjailchannel, setwelcome, setgreetchannel, autoresponder, clearsnipe                                      |
-| **Utility**     | help, ping, snipe, editsnipe, afk, avatar, userinfo, userbanner, serverinfo, serverbanner, roleinfo, membercount, boostcount, steal, greet |
+| Module          | Commands                                                                                                                            |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Moderation**  | ban, unban, softban, kick, timeout, warn, mute, jail, unjail, purge, slowmode, hide, unhide, voice, nick, role, cases               |
+| **Permissions** | fadmin, fmod, givepermission (`gp` / `fakeperm`), permissions                                                                       |
+| **Admin**       | setup, setprefix, setjailrole, setjailchannel, setgreetchannel, autoresponder, clearsnipe                                           |
+| **Utility**     | help, ping, snipe, editsnipe, afk, avatar, userinfo, userbanner, serverinfo, serverbanner, roleinfo, membercount, boostcount, steal |
 
-Registry is generated: `site/src/data/commands.json` via `npm run docs:export` (synced to [bolt-docs](https://github.com/gogeta1232/bolt-docs)). Docs source: `site/src/content`.
+Registry is generated: `site/src/data/commands.json` via `npm run docs:export` (synced to [bolt-docs](https://github.com/gogeta1232/bolt-docs)). Guide source: [`bolt-docs/src/content`](https://github.com/gogeta1232/bolt-docs/tree/main/src/content).
 
 ## Stack & structure
 
@@ -160,7 +164,7 @@ src/
   lib/                   pure helpers, embeds, permission checks
   setup/                 container wiring, boot order
   scripts/               sync-indexes, export-commands
-site/                    docs site (Vite, searchable guides)
+site/                    generated command registry for bolt-docs
 tests/unit/              pure logic, no Discord connection
 ```
 

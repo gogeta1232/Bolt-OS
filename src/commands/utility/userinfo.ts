@@ -3,6 +3,7 @@ import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import { type ChatInputCommandInteraction, GuildMember, Message, PermissionFlagsBits, MessageFlags } from 'discord.js';
 
 import { single, v2 } from '../../lib/embeds.js';
+import { fetchUserProfile } from '../../lib/user-profile.js';
 
 // ── Named constants ──
 const AVATAR_SIZE = 128;
@@ -39,8 +40,9 @@ export class UserInfoCommand extends Command {
       });
       return;
     }
+    await interaction.deferReply();
     const payload = await this.buildV2(target);
-    await interaction.reply(payload as unknown as Parameters<typeof interaction.reply>[0]);
+    await interaction.editReply(payload);
   }
 
   public override async messageRun(message: Message, args: Args) {
@@ -65,11 +67,11 @@ export class UserInfoCommand extends Command {
     message: Message,
     args: Args
   ): Promise<{ member: GuildMember | null; ambiguousFeedback?: string } | null> {
-    const peek = await args.peekResult('memberResolved');
-    if (peek.isOk()) {
-      const resolvedMember = await args.pick('memberResolved');
+    const result = await args.pickResult('memberResolved');
+    if (result.isOk()) {
+      const resolvedMember = result.unwrap();
       await args.rest('string').catch(() => null);
-      return { member: resolvedMember as GuildMember };
+      return { member: resolvedMember };
     }
 
     const remainder = await args.rest('string').catch(() => '');
@@ -116,7 +118,7 @@ export class UserInfoCommand extends Command {
   }
 
   private async fetchMemberAssets(guildMember: GuildMember): Promise<{ bannerUrl: string | null; avatarUrl: string }> {
-    const fetchedUser = await this.container.client.users.fetch(guildMember.user.id, { force: true }).catch(() => null);
+    const fetchedUser = await fetchUserProfile(guildMember.user);
     const bannerUrl = fetchedUser?.bannerURL({ size: BANNER_SIZE }) ?? null;
     const avatarUrl = guildMember.user.displayAvatarURL({ size: AVATAR_SIZE });
     return { bannerUrl, avatarUrl };
@@ -173,8 +175,7 @@ export class UserInfoCommand extends Command {
 
   private async buildBadgeBlock(guildMember: GuildMember): Promise<string | null> {
     try {
-      const userFlags = await guildMember.user.fetchFlags();
-      const badgeArray = userFlags.toArray();
+      const badgeArray = guildMember.user.flags?.toArray() ?? [];
       if (badgeArray.length === 0) return null;
       const formattedBadges = badgeArray
         .map((permissionFlagName) => `\`${this.humanizeFlagName(permissionFlagName)}\``)

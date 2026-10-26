@@ -4,7 +4,6 @@ import { AttachmentBuilder, type GuildBasedChannel, type Message, type PartialMe
 import { getEmoji } from '../../../config/emojis.js';
 import { resolveChannelContext, resolveMessageContext } from '../../../config/logging.js';
 import {
-  fetchPartialMessage,
   formatAttachments,
   formatContentPreview,
   formatEmbedSummary,
@@ -14,40 +13,32 @@ import {
   summarizeV2Interactives
 } from '../../../lib/utils/message-helpers.js';
 import { downloadDiscordImage } from '../../../lib/remote-media.js';
+import { isImageAttachment } from '../../../lib/afk-views.js';
+import { isOwnMessage } from '../../../lib/message-log.js';
 
 const ATTACHMENT_PREVIEW_MAX = 1000;
 const V2_TEXT_JOIN_MAX = 1800;
 const LOG_MEDIA_MAX = 4;
 const LOG_MEDIA_FETCH_TIMEOUT_MS = 8000;
 const LOG_MEDIA_MAX_BYTES = 8_000_000;
-const GALLERY_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
-
-const extensionOf = (url: string): string | null => {
-  try {
-    const ext = new URL(url).pathname.split('.').pop()?.toLowerCase() ?? '';
-    return GALLERY_EXTENSIONS.has(ext) ? ext : null;
-  } catch {
-    return null;
-  }
-};
 
 /**
  * Download media to buffers for re-upload into the log's gallery.
  * WHY buffered with caps: URL-based attach lets one dead/slow link fail the
  * entire log send — failures here just skip that image.
  */
-async function fetchLogMedia(urls: string[], base: string): Promise<AttachmentBuilder[]> {
+async function fetchLogMedia(sources: string[][], base: string): Promise<AttachmentBuilder[]> {
   const out: AttachmentBuilder[] = [];
-  for (const url of urls) {
-    if (out.length >= LOG_MEDIA_MAX) break;
-    const ext = extensionOf(url);
-    if (!ext) continue;
-    const downloaded = await downloadDiscordImage(url, {
-      maxBytes: LOG_MEDIA_MAX_BYTES,
-      timeoutMs: LOG_MEDIA_FETCH_TIMEOUT_MS
-    });
-    if (!downloaded) continue;
-    out.push(new AttachmentBuilder(downloaded.data, { name: `${base}-${out.length}.${ext}` }));
+  for (const urls of sources.slice(0, LOG_MEDIA_MAX)) {
+    for (const url of new Set(urls)) {
+      const downloaded = await downloadDiscordImage(url, {
+        maxBytes: LOG_MEDIA_MAX_BYTES,
+        timeoutMs: LOG_MEDIA_FETCH_TIMEOUT_MS
+      });
+      if (!downloaded) continue;
+      out.push(new AttachmentBuilder(downloaded.data, { name: `${base}-${out.length}.${downloaded.extension}` }));
+      break;
+    }
   }
   return out;
 }
@@ -57,18 +48,15 @@ export class MessageDeleteListener extends Listener<typeof Events.MessageDelete>
     super(context, { ...options, event: Events.MessageDelete });
   }
 
-  public async run(message: Message | PartialMessage) {
-    if (!message.guild) return;
+  public async run(message: Message | PartialMessage): Promise<void> {
+    if (!message.guild || isOwnMessage(message, this.container.client.user?.id)) return;
 
-    // Fetch partial message
-    const fullMessage = await fetchPartialMessage(message);
-
-    // Store in snipe service (only non-bot messages with content)
-    if (fullMessage && !fullMessage.author?.bot && hasLogableContent(fullMessage)) {
-      this.container.snipe.storeDeletedMessage(fullMessage);
+    // Deleted messages cannot be fetched back from Discord. Use only captured data.
+    if (message.author && !message.author.bot && hasLogableContent(message)) {
+      this.container.snipe.storeDeletedMessage(message);
     }
 
-    const source = fullMessage ?? message;
+    const source = message;
     const author = source.author ?? message.author ?? null;
 
     // Body sections — header pills (user • channel • time) and footer (ID • Jump)
@@ -103,21 +91,25 @@ export class MessageDeleteListener extends Listener<typeof Events.MessageDelete>
       sections.push(...formatStickers([...stickers.values()]));
     }
 
+    // An uncached deletion may contain only an ID. Do not send an empty evidence card.
+    if (sections.length === 0) return;
+
     // Re-upload every image (attachments + embed media + stickers) so the log
     // shows them in-card instead of bare links.
-    const mediaUrls: string[] = [];
+    const mediaUrls: string[][] = [];
     if (attachments && attachments.size > 0) {
       for (const att of attachments.values()) {
-        if (att.contentType?.startsWith('image/')) mediaUrls.push(att.url);
+        if (isImageAttachment(att)) mediaUrls.push([att.url, att.proxyURL]);
       }
     }
     for (const embed of embeds) {
-      if (embed.image?.url) mediaUrls.push(embed.image.url);
-      if (embed.thumbnail?.url) mediaUrls.push(embed.thumbnail.url);
+      if (embed.image?.url) mediaUrls.push([embed.image.url, ...(embed.image.proxyURL ? [embed.image.proxyURL] : [])]);
+      if (embed.thumbnail?.url)
+        mediaUrls.push([embed.thumbnail.url, ...(embed.thumbnail.proxyURL ? [embed.thumbnail.proxyURL] : [])]);
     }
     if (stickers && stickers.size > 0) {
       for (const sticker of stickers.values()) {
-        if (sticker.url) mediaUrls.push(sticker.url);
+        if (sticker.url) mediaUrls.push([sticker.url]);
       }
     }
     const imageFiles = await fetchLogMedia(mediaUrls, `deleted-${message.id}`);
@@ -125,7 +117,7 @@ export class MessageDeleteListener extends Listener<typeof Events.MessageDelete>
     // Over the readable limit? Show a slice, attach the whole thing as txt.
     // WHY: a single TextDisplay caps at 4000 chars — truncating alone would
     // silently lose evidence, so long deletes always keep a full transcript.
-    const fullBody = sections.length > 0 ? sections.join('\n\n') : '*No recoverable content*';
+    const fullBody = sections.join('\n\n');
     let visibleBody = fullBody;
     const files = [...imageFiles];
     if (fullBody.length > 2000) {

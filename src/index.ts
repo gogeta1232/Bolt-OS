@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './setup/load-env.js';
 
 import { ApplicationCommandRegistries, RegisterBehavior, container } from '@sapphire/framework';
 import { dirname } from 'node:path';
@@ -15,7 +15,7 @@ import { initializeServices } from './setup/plugins.js';
 
 const LOGIN_TIMEOUT_MS = 30_000;
 
-ApplicationCommandRegistries.setDefaultBehaviorWhenNotIdentical(RegisterBehavior.VerboseOverwrite);
+ApplicationCommandRegistries.setDefaultBehaviorWhenNotIdentical(RegisterBehavior.BulkOverwrite);
 ApplicationCommandRegistries.setBulkOverwriteRetries(10);
 
 const baseUserDirectory = dirname(fileURLToPath(import.meta.url));
@@ -52,7 +52,10 @@ const handleShutdown = async (exitCode = 0): Promise<void> => {
   container.snipe.shutdown();
   container.muteScheduler.shutdown();
   container.cases.shutdown();
+  container.autoResponders.shutdown();
+  await container.greetings.shutdown();
   const results = await Promise.allSettled([client.destroy(), stopHeartbeatServer(), container.database.disconnect()]);
+  container.logging.shutdown();
   for (const result of results) {
     if (result.status === 'rejected') {
       container.logger.error({ err: result.reason }, 'Service shutdown failed');

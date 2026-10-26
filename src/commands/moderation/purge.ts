@@ -13,11 +13,11 @@ import { createEmbed } from '../../config/theme.js';
 import { getEmoji } from '../../config/emojis.js';
 import { buildModerationContext } from '../../config/logging.js';
 import { replyToast } from '../../lib/respond.js';
+import { deletePurgeMessages } from '../../services/moderation/purge-service.js';
 
 const BULK_LIMIT = 100;
 const MAX_MESSAGE_AGE_MS = 1_209_600_000; // 14 days
 const DEFAULT_SCOPE_AMOUNT = 10; // Default when no amount specified for scope commands
-const MAX_CONCURRENT_DELETIONS = 50; // Optimal for Discord rate limits
 
 type PurgeScope =
   | { type: 'all' }
@@ -116,11 +116,11 @@ export class PurgeCommand extends Command {
     }
 
     try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const deleted = await this.purge(channel, finalAmount, finalScope, interaction.user, undefined);
 
-      await interaction.reply({
-        embeds: [this.buildSummaryEmbed(deleted, channel)],
-        flags: MessageFlags.Ephemeral
+      await interaction.editReply({
+        embeds: [this.buildSummaryEmbed(deleted, channel)]
       });
     } catch (error) {
       console.error('Error during slash command purge operation:', error);
@@ -194,7 +194,6 @@ export class PurgeCommand extends Command {
     actor: User,
     beforeId?: string
   ) {
-    let totalDeleted = 0;
     let totalMatched = 0; // Count only messages that match the scope
     let humanCount = 0;
     let botCount = 0;
@@ -203,7 +202,7 @@ export class PurgeCommand extends Command {
     const recentMessages: DjsMessage[] = []; // ≤14 days (bulk deletable)
     const oldMessages: DjsMessage[] = []; // >14 days (individual delete)
 
-    // TURBO: Pre-compile scope matching function for speed
+    // Match the requested scope while scanning each history page.
     const matchFunction = this.createOptimizedMatcher(scope);
 
     const processBatch = (messages: Collection<string, DjsMessage>) => {
@@ -211,7 +210,7 @@ export class PurgeCommand extends Command {
       for (const msg of messages.values()) {
         if (totalMatched >= amount) break;
 
-        // Ultra-fast scope matching
+        // Match only the requested messages.
         if (matchFunction(msg)) {
           totalMatched++;
 
@@ -241,9 +240,9 @@ export class PurgeCommand extends Command {
       if (!before || messages.size < BULK_LIMIT) break;
     }
 
-    // TURBO: Delete messages in parallel - no waiting
-    await this.turboDelete(recentMessages, oldMessages, channel, () => {
-      totalDeleted++;
+    const totalDeleted = await deletePurgeMessages(recentMessages, oldMessages, async (chunk) => {
+      const deleted = await channel.bulkDelete(chunk, true);
+      return deleted.size;
     });
 
     const guild = channel.guild;
@@ -274,7 +273,7 @@ export class PurgeCommand extends Command {
     return this.buildResult(totalDeleted, humanCount, botCount);
   }
 
-  // ULTRA FAST: Optimized scope matcher
+  // Keep scope matching consistent between prefix and slash commands.
   private createOptimizedMatcher(scope: PurgeScope) {
     switch (scope.type) {
       case 'user': {
@@ -298,7 +297,7 @@ export class PurgeCommand extends Command {
     }
   }
 
-  // TURBO: Fetch with retry logic
+  // A failed page fetch stops the scan.
   private async fetchWithRetry(
     channel: GuildTextBasedChannel,
     before: string | undefined,
@@ -310,68 +309,6 @@ export class PurgeCommand extends Command {
       console.error('Failed to fetch messages:', error);
       return new Collection();
     }
-  }
-
-  // SUPER FAST: Turbo delete with parallel processing and concurrency control
-  private async turboDelete(
-    recentMessages: DjsMessage[],
-    oldMessages: DjsMessage[],
-    channel: GuildTextBasedChannel,
-    incrementCounter: () => void
-  ) {
-    const allPromises: Promise<void>[] = [];
-
-    // BULK DELETE: Recent messages in optimal chunks with concurrency control
-    if (recentMessages.length > 0) {
-      for (let i = 0; i < recentMessages.length; i += BULK_LIMIT) {
-        const chunk = recentMessages.slice(i, i + BULK_LIMIT);
-
-        allPromises.push(
-          (async () => {
-            try {
-              const deleted = await channel.bulkDelete(chunk, true);
-              for (let j = 0; j < deleted.size; j++) {
-                incrementCounter();
-              }
-            } catch {
-              // Fallback to individual deletion with concurrency control
-              const individualDeletions = chunk.map((msg) =>
-                msg
-                  .delete()
-                  .then(() => incrementCounter())
-                  .catch(() => {})
-              );
-              // Process in batches to respect concurrency limits
-              for (let j = 0; j < individualDeletions.length; j += MAX_CONCURRENT_DELETIONS) {
-                const batch = individualDeletions.slice(j, j + MAX_CONCURRENT_DELETIONS);
-                await Promise.all(batch);
-              }
-            }
-          })()
-        );
-      }
-    }
-
-    // INDIVIDUAL DELETE: Old messages with concurrency control
-    if (oldMessages.length > 0) {
-      for (let i = 0; i < oldMessages.length; i += MAX_CONCURRENT_DELETIONS) {
-        const batch = oldMessages.slice(i, i + MAX_CONCURRENT_DELETIONS);
-        allPromises.push(
-          (async () => {
-            const individualDeletions = batch.map((msg) =>
-              msg
-                .delete()
-                .then(() => incrementCounter())
-                .catch(() => {})
-            );
-            await Promise.all(individualDeletions);
-          })()
-        );
-      }
-    }
-
-    // Execute all deletion operations with concurrency management
-    await Promise.all(allPromises);
   }
 
   private buildResult(total: number, humans: number, bots: number) {

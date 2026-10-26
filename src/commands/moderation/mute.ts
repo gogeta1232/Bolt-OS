@@ -1,6 +1,6 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command, RegisterBehavior } from '@sapphire/framework';
-import { GuildMember, Message, type ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, GuildMember, Message, type ChatInputCommandInteraction } from 'discord.js';
 import Fuse from 'fuse.js';
 
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
@@ -43,6 +43,7 @@ export class MuteCommand extends AdminCommand {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guild = interaction.guild;
     if (!guild) {
       await replyGuildOnly(interaction);

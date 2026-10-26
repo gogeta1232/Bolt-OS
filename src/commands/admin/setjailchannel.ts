@@ -4,6 +4,7 @@ import { ChannelType, Message, MessageFlags, PermissionFlagsBits, TextChannel } 
 import type { ChatInputCommandInteraction } from 'discord.js';
 
 import { createEmbed } from '../../config/theme.js';
+import { replyOrEdit } from '../../lib/respond.js';
 import { getEmoji } from '../../config/emojis.js';
 import { AdminCommand } from '../../lib/structures/AdminCommand.js';
 
@@ -37,6 +38,7 @@ export class SetJailChannelCommand extends AdminCommand {
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     await this.ensureAdmin(interaction);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const show = interaction.options.getBoolean('show') ?? false;
 
     if (show) {
@@ -45,7 +47,7 @@ export class SetJailChannelCommand extends AdminCommand {
 
       const description = `**Jail Channel:** ${jailChannel ? jailChannel.toString() : 'Not set'}`;
 
-      await interaction.reply({
+      await replyOrEdit(interaction, {
         embeds: [
           createEmbed({
             title: `${getEmoji('settings')} Jail Channel Settings`,
@@ -60,7 +62,7 @@ export class SetJailChannelCommand extends AdminCommand {
 
     const channel = interaction.options.getChannel('channel', true);
     await this.container.config.set(interaction.guildId!, { jailChannelId: channel.id });
-    await interaction.reply({
+    await replyOrEdit(interaction, {
       embeds: [createEmbed({ description: `Jail channel updated to ${channel.toString()}`, type: 'success' })],
       flags: MessageFlags.Ephemeral
     });
@@ -75,12 +77,9 @@ export class SetJailChannelCommand extends AdminCommand {
     const channel = message.channel;
     if (!channel || !('send' in channel)) return;
 
-    const show = await args
-      .pick('string')
-      .then((str) => str === 'show')
-      .catch(() => false);
+    const firstArgument = await args.pick('string').catch(() => null);
 
-    if (show) {
+    if (firstArgument === 'show') {
       const config = await this.container.config.fetch(message.guild!.id);
       const jailChannel = config.jailChannelId ? message.guild!.channels.cache.get(config.jailChannelId) : null;
 
@@ -98,7 +97,7 @@ export class SetJailChannelCommand extends AdminCommand {
       return;
     }
 
-    const rawChannel = await args.rest('string').catch(() => null);
+    const rawChannel = [firstArgument, await args.rest('string').catch(() => null)].filter(Boolean).join(' ');
     if (!rawChannel) {
       await channel.send({
         embeds: [createEmbed({ description: 'Provide a channel to set as the jail channel.', type: 'warning' })]

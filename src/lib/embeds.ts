@@ -14,6 +14,7 @@ import {
 import { theme } from '../config/theme.js';
 import { getEmoji } from '../config/emojis.js';
 import { toast } from './single-line-embed.js';
+import { NO_MENTIONS } from './mentions.js';
 
 export type EmbedKind = 'primary' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -44,7 +45,7 @@ export const createSingleLineEmbedResponse = (
   description: string,
   kind: EmbedKind = 'info',
   ephemeral: boolean = false
-): unknown => (ephemeral ? toast(kind, description, true) : toast(kind, description));
+): ReturnType<typeof toast> => (ephemeral ? toast(kind, description, true) : toast(kind, description));
 
 /**
  * Creates a legacy rich embed with optional title prefix and footer.
@@ -216,13 +217,17 @@ export const createContainerEmbed = (options: ContainerEmbedOptions) => {
 
     const baseFlags = MessageFlags.IsComponentsV2;
     const finalFlags = options.ephemeral ? baseFlags | MessageFlags.Ephemeral : baseFlags;
-    return { components: [containerBuilder], flags: finalFlags } as const;
+    return { components: [containerBuilder], flags: finalFlags, allowedMentions: NO_MENTIONS } as const;
   } catch {
     // Fallback container — WHY: never let embed creation crash the command
     const fallbackContainer = new ContainerBuilder().setAccentColor(resolveKindColor('info'));
     fallbackContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${options.title}`));
     patchContainerDataForTest(fallbackContainer);
-    return { components: [fallbackContainer], flags: MessageFlags.IsComponentsV2 } as const;
+    return {
+      components: [fallbackContainer],
+      flags: MessageFlags.IsComponentsV2,
+      allowedMentions: NO_MENTIONS
+    } as const;
   }
 };
 

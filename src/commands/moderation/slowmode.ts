@@ -1,6 +1,7 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command, RegisterBehavior } from '@sapphire/framework';
 import {
+  MessageFlags,
   ChannelType,
   type ChatInputCommandInteraction,
   Message,
@@ -81,6 +82,7 @@ export class SlowmodeCommand extends Command {
   }
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const subcommand = interaction.options.getSubcommand(true);
     const channel = (interaction.options.getChannel('channel') ?? interaction.channel) as TextBasedChannel | null;
     if (!channel || !this.isGuildText(channel)) {

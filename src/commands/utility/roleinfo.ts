@@ -53,9 +53,9 @@ export class RoleInfoCommand extends Command {
 
     let role: Role | null = null;
 
-    const rolePeek = await args.peekResult('role');
-    if (rolePeek.isOk()) {
-      role = await args.pick('role');
+    const roleResult = await args.pickResult('role');
+    if (roleResult.isOk()) {
+      role = roleResult.unwrap();
       await args.rest('string').catch(() => null);
     } else if (message.mentions.roles.first()) {
       role = message.mentions.roles.first()!;
