@@ -9,7 +9,7 @@ import globals from 'globals';
 
 const importRecommended = importPlugin.configs.recommended;
 const importTypescript = importPlugin.configs.typescript;
-const tsconfigRootDir = path.dirname(fileURLToPath(import.meta.url));
+const tsconfigRootDir = fileURLToPath(new URL('..', import.meta.url));
 
 export default [
   {
@@ -21,7 +21,7 @@ export default [
     }
   },
   {
-    ignores: ['dist/**', 'node_modules/**', 'site/dist/**', 'site/node_modules/**']
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**']
   },
   js.configs.recommended,
   {
@@ -29,7 +29,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: './tsconfig.eslint.json',
+        project: './config/tsconfig.eslint.json',
         tsconfigRootDir,
         sourceType: 'module'
       }
@@ -43,7 +43,7 @@ export default [
       ...(importTypescript?.settings ?? {}),
       'import/resolver': {
         typescript: {
-          project: path.join(tsconfigRootDir, 'tsconfig.eslint.json')
+          project: path.join(tsconfigRootDir, 'config/tsconfig.eslint.json')
         }
       }
     },
