@@ -1,8 +1,5 @@
-dist
-coverage
-node_modules
+dist/
+coverage/
+node_modules/
 package-lock.json
-design-system
-site/node_modules
-site/dist
-site/src/data/commands.json
+docs/commands.json
